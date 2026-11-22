@@ -1,0 +1,11 @@
+{
+  "name": "School Management System",
+  "short_name": "School System",
+  "description": "A Complete School Management System by Gebreslassie",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3f6fb",
+  "theme_color": "#0b1f3a"
+}
