@@ -1,102 +1,151 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>School Account Registration</title>
+  <meta name="theme-color" content="#0b1f3a">
+  <title>School Registration</title>
+  <link rel="stylesheet" href="./style.css">
   <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      background: #0b1f3a;
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    .box {
-      width: 100%;
-      max-width: 420px;
+    .register-box {
+      max-width: 480px;
+      margin: 35px auto;
+      padding: 25px;
       background: white;
-      padding: 28px;
       border-radius: 14px;
+      box-shadow: 0 3px 15px #00000015;
     }
-    h2 { color: #0b1f3a; text-align: center; }
-    input {
+    .register-box input {
+      max-width: 100%;
+    }
+    .register-box button {
       width: 100%;
       padding: 13px;
-      margin: 8px 0;
-      border: 1px solid #cbd5e1;
-      border-radius: 7px;
-    }
-    button {
-      width: 100%;
-      padding: 13px;
-      margin-top: 12px;
-      background: #0b1f3a;
+      background: #087ec4;
       color: white;
-      border: none;
-      border-radius: 7px;
-      font-size: 16px;
+      border: 0;
+      border-radius: 8px;
+      font-weight: bold;
     }
-    #message { text-align: center; }
+    #message {
+      margin-top: 15px;
+      overflow-wrap: anywhere;
+    }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h2>Register School Account</h2>
+
+  <header>
+    <h1>School Management System</h1>
+    <p>By Gebreslassie</p>
+  </header>
+
+  <div class="register-box">
+    <h2>Register Your School</h2>
+
     <form id="registerForm">
-      <input id="school" type="text" placeholder="School name" required>
-      <input id="email" type="email" placeholder="Email address" required>
-      <input id="password" type="password" placeholder="Password (minimum 6 characters)" minlength="6" required>
-      <button type="submit">Create Account</button>
+      <input type="text" id="schoolName"
+        placeholder="School name" required>
+
+      <input type="text" id="ownerName"
+        placeholder="Owner full name" required>
+
+      <input type="email" id="email"
+        placeholder="Email address" required>
+
+      <input type="tel" id="phone"
+        placeholder="Phone number" required>
+
+      <input type="password" id="password"
+        placeholder="Password (minimum 6 characters)"
+        minlength="6" required>
+
+      <button type="submit" id="registerButton">
+        Register School
+      </button>
     </form>
+
     <p id="message"></p>
-    <p><a href="./login.html">Already have an account? Login</a></p>
+
+    <p>Already registered?
+      <a href="./login.html">Login here</a>
+    </p>
   </div>
 
   <script type="module">
     import {
-      auth,
-      db,
-      createUserWithEmailAndPassword,
-      collection,
-      addDoc
-    } from "./firebase.js";
+      createUserWithEmailAndPassword
+    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+    import {
+      doc,
+      setDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    import { auth, db } from "./firebase.js";
 
     const form = document.getElementById("registerForm");
     const message = document.getElementById("message");
+    const button = document.getElementById("registerButton");
 
-    form.addEventListener("submit", async event => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      button.disabled = true;
+      message.textContent = "Registering...";
 
-      const school = document.getElementById("school").value.trim();
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
-
-      message.textContent = "Please wait...";
+      let user = null;
 
       try {
+        const schoolName =
+          document.getElementById("schoolName").value.trim();
+        const ownerName =
+          document.getElementById("ownerName").value.trim();
+        const email =
+          document.getElementById("email").value.trim();
+        const phone =
+          document.getElementById("phone").value.trim();
+        const password =
+          document.getElementById("password").value;
+
         const result = await createUserWithEmailAndPassword(
           auth, email, password
         );
 
-        await addDoc(collection(db, "schools"), {
-          schoolName: school,
-          email: email,
-          uid: result.user.uid,
-          createdAt: new Date().toISOString(),
-          status: "pending"
+        user = result.user;
+
+        await setDoc(doc(db, "schools", user.uid), {
+          schoolName,
+          ownerName,
+          email,
+          phone,
+          status: "pending",
+          createdAt: serverTimestamp()
         });
 
-        message.textContent = "Account created. Please login.";
+        message.textContent =
+          "Registration successful. Please login.";
+
         form.reset();
 
+        setTimeout(() => {
+          window.location.href = "./login.html";
+        }, 2000);
+
       } catch (error) {
-        message.textContent = "Registration failed: " + error.message;
+        if (user) {
+          message.textContent =
+            "Account created, but school details could not be saved. Contact the administrator. Error: " +
+            error.message;
+        } else {
+          message.textContent = "Registration failed: " + error.message;
+        }
+      } finally {
+        button.disabled = false;
       }
     });
   </script>
+
 </body>
 </html>
