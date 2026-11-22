@@ -1,0 +1,76 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f3f6fb;
+  color: #172033;
+}
+
+header {
+  background: #0b1f3a;
+  color: white;
+  padding: 20px;
+}
+
+header h1 {
+  margin: 0;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  background: white;
+}
+
+nav button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 7px;
+  background: #e8eef7;
+  cursor: pointer;
+}
+
+nav button.active {
+  background: #0b1f3a;
+  color: white;
+}
+
+main {
+  max-width: 1100px;
+  margin: auto;
+  padding: 20px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 15px;
+}
+
+.card, .panel {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px #00000010;
+}
+
+.card h3 {
+  color: #52627a;
+}
+
+.number {
+  font-size: 28px;
+  font-weight: bold;
+  color: #0b1f3a;
+}
+
+footer {
+  text-align: center;
+  padding: 20px;
+  color: #64748b;
+}
