@@ -1,81 +1,52 @@
-const DB_NAME = "SchoolManagementDB";
-const DB_VERSION = 1;
 
-let database;
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-function openDatabase() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+import { db } from "./firebase.js";
 
-    request.onupgradeneeded = event => {
-      const db = event.target.result;
-
-      const stores = [
-        "students",
-        "teachers",
-        "classes",
-        "subjects",
-        "attendance",
-        "results",
-        "fees",
-        "performance"
-      ];
-
-      stores.forEach(name => {
-        if (!db.objectStoreNames.contains(name)) {
-          db.createObjectStore(name, {
-            keyPath: "id",
-            autoIncrement: true
-          });
-        }
-      });
-    };
-
-    request.onsuccess = event => {
-      database = event.target.result;
-      resolve(database);
-    };
-
-    request.onerror = () => reject(request.error);
+export async function addRecord(collectionName, data) {
+  return await addDoc(collection(db, collectionName), {
+    ...data,
+    createdAt: new Date().toISOString()
   });
 }
 
-async function saveRecord(storeName, record) {
-  const db = database || await openDatabase();
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, "readwrite");
-    const request = transaction.objectStore(storeName).put(record);
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+export async function getRecords(collectionName) {
+  const snapshot = await getDocs(collection(db, collectionName));
+  return snapshot.docs.map(item => ({
+    id: item.id,
+    ...item.data()
+  }));
 }
 
-async function getRecords(storeName) {
-  const db = database || await openDatabase();
-
-  return new Promise((resolve, reject) => {
-    const request = db.transaction(storeName)
-      .objectStore(storeName).getAll();
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+export async function updateRecord(collectionName, id, data) {
+  const reference = doc(db, collectionName, id);
+  return await updateDoc(reference, data);
 }
 
-async function deleteRecord(storeName, id) {
-  const db = database || await openDatabase();
-
-  return new Promise((resolve, reject) => {
-    const request = db.transaction(storeName, "readwrite")
-      .objectStore(storeName).delete(id);
-
-    request.onsuccess = () => resolve(true);
-    request.onerror = () => reject(request.error);
-  });
+export async function deleteRecord(collectionName, id) {
+  const reference = doc(db, collectionName, id);
+  return await deleteDoc(reference);
 }
 
-openDatabase().catch(error => {
-  console.error("Database error:", error);
-});
+export async function findRecords(collectionName, field, value) {
+  const q = query(
+    collection(db, collectionName),
+    where(field, "==", value)
+  );
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map(item => ({
+    id: item.id,
+    ...item.data()
+  }));
+}
