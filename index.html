@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>School Management System</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f6fb;
+      color: #172033;
+    }
+    header {
+      background: #0b1f3a;
+      color: white;
+      padding: 18px 20px;
+    }
+    header h1 { margin: 0; font-size: 22px; }
+    header p { margin: 6px 0 0; color: #cbd5e1; }
+    nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    nav button {
+      border: 0;
+      background: #e8eef7;
+      color: #0b1f3a;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    nav button.active { background: #0b1f3a; color: white; }
+    main { padding: 20px; max-width: 1100px; margin: auto; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: white;
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px #0b1f3a12;
+    }
+    .card h3 { margin: 0 0 10px; color: #52627a; font-size: 15px; }
+    .number { font-size: 28px; font-weight: bold; color: #0b1f3a; }
+    .panel {
+      margin-top: 20px;
+      padding: 20px;
+      background: white;
+      border-radius: 12px;
+    }
+    .panel h2 { margin-top: 0; }
+    footer { text-align: center; padding: 24px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>School Management System</h1>
+    <p>By Gebreslassie</p>
+  </header>
+
+  <nav>
+    <button class="active" onclick="showPage('dashboard', this)">Dashboard</button>
+    <button onclick="showPage('students', this)">Students</button>
+    <button onclick="showPage('teachers', this)">Teachers</button>
+    <button onclick="showPage('attendance', this)">Attendance</button>
+    <button onclick="showPage('results', this)">Exams & Results</button>
+    <button onclick="showPage('reports', this)">Reports</button>
+  </nav>
+
+  <main id="content">
+    <h2>Dashboard</h2>
+    <div class="cards">
+      <div class="card"><h3>Total Students</h3><div class="number">0</div></div>
+      <div class="card"><h3>Total Teachers</h3><div class="number">0</div></div>
+      <div class="card"><h3>Classes</h3><div class="number">0</div></div>
+      <div class="card"><h3>Attendance Today</h3><div class="number">0%</div></div>
+    </div>
+    <section class="panel">
+      <h2>Welcome</h2>
+      <p>Your school management system is being set up.</p>
+    </section>
+  </main>
+
+  <footer>School Management System · By Gebreslassie</footer>
+
+  <script>
+    function showPage(page, button) {
+      document.querySelectorAll("nav button").forEach(function (item) {
+        item.classList.remove("active");
+      });
+      button.classList.add("active");
+
+      const pages = {
+        dashboard: "<h2>Dashboard</h2><p>Welcome to your School Management System.</p>",
+        students: "<h2>Student Management</h2><p>Student records will be managed here.</p>",
+        teachers: "<h2>Teacher Management</h2><p>Teacher records and performance will be managed here.</p>",
+        attendance: "<h2>Attendance</h2><p>Student and teacher attendance will be recorded here.</p>",
+        results: "<h2>Exams & Results</h2><p>Exam marks and student results will be managed here.</p>",
+        reports: "<h2>Reports</h2><p>School reports will be available here.</p>"
+      };
+
+      document.getElementById("content").innerHTML = pages[page];
+    }
+  </script>
+</body>
+</html>
