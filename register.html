@@ -9,143 +9,159 @@
   <link rel="stylesheet" href="./style.css">
   <style>
     .register-box {
-      max-width: 480px;
-      margin: 35px auto;
+      max-width: 450px;
+      margin: 40px auto;
       padding: 25px;
       background: white;
-      border-radius: 14px;
-      box-shadow: 0 3px 15px #00000015;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px #00000015;
     }
     .register-box input {
-      max-width: 100%;
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin: 12px 0;
+      border: 1px solid #ccd5e0;
+      border-radius: 7px;
+      font-size: 16px;
     }
     .register-box button {
       width: 100%;
       padding: 13px;
-      background: #087ec4;
+      background: #0b1f3a;
       color: white;
-      border: 0;
-      border-radius: 8px;
-      font-weight: bold;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 16px;
     }
-    #message {
-      margin-top: 15px;
-      overflow-wrap: anywhere;
-    }
+    .register-box a { color: #0077cc; }
+    #message { overflow-wrap: anywhere; }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>School Management System</h1>
-    <p>By Gebreslassie</p>
-  </header>
+<header>
+  <h1>School Management System</h1>
+  <p>By Gebreslassie</p>
+</header>
 
-  <div class="register-box">
-    <h2>Register Your School</h2>
+<div class="register-box">
+  <h2>Register Your School</h2>
 
-    <form id="registerForm">
-      <input type="text" id="schoolName"
-        placeholder="School name" required>
+  <form id="registerForm">
+    <input type="text" id="schoolName"
+      placeholder="School name" required>
 
-      <input type="text" id="ownerName"
-        placeholder="Owner full name" required>
+    <input type="text" id="ownerName"
+      placeholder="Owner full name" required>
 
-      <input type="email" id="email"
-        placeholder="Email address" required>
+    <input type="email" id="email"
+      placeholder="Email address" required>
 
-      <input type="tel" id="phone"
-        placeholder="Phone number" required>
+    <input type="tel" id="phone"
+      placeholder="Phone number" required>
 
-      <input type="password" id="password"
-        placeholder="Password (minimum 6 characters)"
-        minlength="6" required>
+    <input type="password" id="password"
+      placeholder="Password (minimum 6 characters)"
+      minlength="6" required>
 
-      <button type="submit" id="registerButton">
-        Register School
-      </button>
-    </form>
+    <button type="submit" id="registerButton">
+      Register School
+    </button>
+  </form>
 
-    <p id="message"></p>
+  <p id="message"></p>
 
-    <p>Already registered?
-      <a href="./login.html">Login here</a>
-    </p>
-  </div>
+  <p>
+    Already registered?
+    <a href="./login.html">Login here</a>
+  </p>
+</div>
 
-  <script type="module">
-    import {
-      createUserWithEmailAndPassword
-    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+<script type="module">
+  import {
+    createUserWithEmailAndPassword
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    import {
-      doc,
-      setDoc,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+  import {
+    doc,
+    setDoc,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    import { auth, db } from "./firebase.js";
+  import { auth, db } from "./firebase.js";
 
-    const form = document.getElementById("registerForm");
-    const message = document.getElementById("message");
-    const button = document.getElementById("registerButton");
+  const form = document.getElementById("registerForm");
+  const message = document.getElementById("message");
+  const button = document.getElementById("registerButton");
 
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      button.disabled = true;
-      message.textContent = "Registering...";
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-      let user = null;
+    const schoolName = document.getElementById("schoolName").value.trim();
+    const ownerName = document.getElementById("ownerName").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const password = document.getElementById("password").value;
 
-      try {
-        const schoolName =
-          document.getElementById("schoolName").value.trim();
-        const ownerName =
-          document.getElementById("ownerName").value.trim();
-        const email =
-          document.getElementById("email").value.trim();
-        const phone =
-          document.getElementById("phone").value.trim();
-        const password =
-          document.getElementById("password").value;
+    if (!schoolName || !ownerName || !email || !phone || !password) {
+      message.textContent = "Please complete all fields.";
+      message.style.color = "red";
+      return;
+    }
 
-        const result = await createUserWithEmailAndPassword(
-          auth, email, password
-        );
+    button.disabled = true;
+    button.textContent = "Registering...";
+    message.textContent = "";
 
-        user = result.user;
+    try {
+      const result = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
 
-        await setDoc(doc(db, "schools", user.uid), {
-          schoolName,
-          ownerName,
-          email,
-          phone,
-          status: "pending",
-          createdAt: serverTimestamp()
-        });
+      const user = result.user;
 
-        message.textContent =
-          "Registration successful. Please login.";
+      await setDoc(doc(db, "schools", user.uid), {
+        schoolName: schoolName,
+        ownerName: ownerName,
+        email: email,
+        phone: phone,
+        status: "pending",
+        createdAt: serverTimestamp()
+      });
 
-        form.reset();
+      message.textContent =
+        "Registration successful. Please login.";
 
-        setTimeout(() => {
-          window.location.href = "./login.html";
-        }, 2000);
+      message.style.color = "green";
+      form.reset();
 
-      } catch (error) {
-        if (user) {
-          message.textContent =
-            "Account created, but school details could not be saved. Contact the administrator. Error: " +
-            error.message;
-        } else {
-          message.textContent = "Registration failed: " + error.message;
-        }
-      } finally {
-        button.disabled = false;
+      setTimeout(() => {
+        window.location.href = "./login.html";
+      }, 2000);
+
+    } catch (error) {
+      console.error(error);
+
+      if (error.code === "auth/email-already-in-use") {
+        message.textContent = "This email is already registered.";
+      } else if (error.code === "auth/weak-password") {
+        message.textContent = "Password must contain at least 6 characters.";
+      } else if (error.code === "auth/invalid-email") {
+        message.textContent = "Please enter a valid email address.";
+      } else {
+        message.textContent = error.message;
       }
-    });
-  </script>
+
+      message.style.color = "red";
+      button.disabled = false;
+      button.textContent = "Register School";
+    }
+  });
+</script>
 
 </body>
 </html>
