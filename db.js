@@ -13,7 +13,6 @@ import {
 
 import { db, auth } from "./firebase.js";
 
-// Collections allowed for each school
 const allowedCollections = [
   "students",
   "teachers",
@@ -23,42 +22,43 @@ const allowedCollections = [
   "performance"
 ];
 
-// Get the signed-in school's collection
-function getSchoolCollection(collectionName) {
+function getSchoolCollection(name) {
   const user = auth.currentUser;
 
   if (!user) {
     throw new Error("Please login first.");
   }
 
-  if (!allowedCollections.includes(collectionName)) {
+  if (!allowedCollections.includes(name)) {
     throw new Error("Invalid collection name.");
   }
 
-  return collection(
-    db,
-    "schools",
-    user.uid,
-    collectionName
-  );
+  return collection(db, "schools", user.uid, name);
 }
 
-// Add a new record
-export async function addRecord(collectionName, data) {
-  return await addDoc(
-    getSchoolCollection(collectionName),
-    {
-      ...data,
-      createdAt: serverTimestamp()
-    }
-  );
+function getSchoolDocument(name, id) {
+  const user = auth.currentUser;
+
+  if (!user) {
+    throw new Error("Please login first.");
+  }
+
+  if (!allowedCollections.includes(name)) {
+    throw new Error("Invalid collection name.");
+  }
+
+  return doc(db, "schools", user.uid, name, id);
 }
 
-// Get all records
-export async function getRecords(collectionName) {
-  const snapshot = await getDocs(
-    getSchoolCollection(collectionName)
-  );
+export async function addRecord(name, data) {
+  return await addDoc(getSchoolCollection(name), {
+    ...data,
+    createdAt: serverTimestamp()
+  });
+}
+
+export async function getRecords(name) {
+  const snapshot = await getDocs(getSchoolCollection(name));
 
   return snapshot.docs.map(item => ({
     id: item.id,
@@ -66,56 +66,22 @@ export async function getRecords(collectionName) {
   }));
 }
 
-// Update a record
-export async function updateRecord(collectionName, id, data) {
-  const user = auth.currentUser;
-
-  if (!user) {
-    throw new Error("Please login first.");
-  }
-
-  if (!allowedCollections.includes(collectionName)) {
-    throw new Error("Invalid collection name.");
-  }
-
-  const reference = doc(
-    db,
-    "schools",
-    user.uid,
-    collectionName,
-    id
+export async function updateRecord(name, id, data) {
+  return await updateDoc(
+    getSchoolDocument(name, id),
+    data
   );
-
-  return await updateDoc(reference, data);
 }
 
-// Delete a record
-export async function deleteRecord(collectionName, id) {
-  const user = auth.currentUser;
-
-  if (!user) {
-    throw new Error("Please login first.");
-  }
-
-  if (!allowedCollections.includes(collectionName)) {
-    throw new Error("Invalid collection name.");
-  }
-
-  const reference = doc(
-    db,
-    "schools",
-    user.uid,
-    collectionName,
-    id
+export async function deleteRecord(name, id) {
+  return await deleteDoc(
+    getSchoolDocument(name, id)
   );
-
-  return await deleteDoc(reference);
 }
 
-// Find records by field
-export async function findRecords(collectionName, field, value) {
+export async function findRecords(name, field, value) {
   const q = query(
-    getSchoolCollection(collectionName),
+    getSchoolCollection(name),
     where(field, "==", value)
   );
 
