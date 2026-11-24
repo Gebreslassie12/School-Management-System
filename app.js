@@ -5,6 +5,7 @@ import { auth } from "./firebase.js";
 import {
   addRecord,
   getRecords,
+  updateRecord,
   deleteRecord
 } from "./db.js";
 
@@ -13,6 +14,7 @@ const $ = selector => document.querySelector(selector);
 let currentUser = null;
 let attendanceSaving = false;
 let performanceSaving = false;
+let editingPerformanceId = null;
 
 let performanceAreas = [
   "Student Progress",
@@ -100,8 +102,7 @@ const pages = {
       </select>
 
       <label>Department / Subject</label>
-      <input id="performanceDepartment"
-        placeholder="Department or subject">
+      <input id="performanceDepartment" placeholder="Department or subject">
 
       <label>Evaluation Date</label>
       <input type="date" id="performanceDate">
@@ -154,46 +155,35 @@ const pages = {
 
     <div class="panel">
       <h3>Department Head's Comment</h3>
-      <textarea id="departmentComment"
-        placeholder="Department head comment"></textarea>
-      <input id="departmentHeadName"
-        placeholder="Department head full name">
-      <input id="departmentHeadSignature"
-        placeholder="Signature / signature reference">
+      <textarea id="departmentComment" placeholder="Department head comment"></textarea>
+      <input id="departmentHeadName" placeholder="Department head full name">
+      <input id="departmentHeadSignature" placeholder="Signature">
       <label>Date</label>
       <input type="date" id="departmentHeadDate">
     </div>
 
     <div class="panel">
       <h3>Deputy Principal's Comment</h3>
-      <textarea id="deputyComment"
-        placeholder="Deputy principal comment"></textarea>
-      <input id="deputyName"
-        placeholder="Deputy principal full name">
-      <input id="deputySignature"
-        placeholder="Signature / signature reference">
+      <textarea id="deputyComment" placeholder="Deputy principal comment"></textarea>
+      <input id="deputyName" placeholder="Deputy principal full name">
+      <input id="deputySignature" placeholder="Signature">
       <label>Date</label>
       <input type="date" id="deputyDate">
     </div>
 
     <div class="panel">
       <h3>Principal's Comment</h3>
-      <textarea id="principalComment"
-        placeholder="Principal comment"></textarea>
-      <input id="principalName"
-        placeholder="Principal full name">
-      <input id="principalSignature"
-        placeholder="Signature / signature reference">
+      <textarea id="principalComment" placeholder="Principal comment"></textarea>
+      <input id="principalName" placeholder="Principal full name">
+      <input id="principalSignature" placeholder="Signature">
       <label>Date</label>
       <input type="date" id="principalDate">
     </div>
 
     <div class="panel">
       <h3>Teacher's Acknowledgement</h3>
-      <textarea id="teacherComment"
-        placeholder="Teacher's comment or response"></textarea>
-      <input id="teacherSignature"
-        placeholder="Teacher signature / signature reference">
+      <textarea id="teacherComment" placeholder="Teacher's comment or response"></textarea>
+      <input id="teacherSignature" placeholder="Teacher signature">
       <label>Date</label>
       <input type="date" id="teacherSignatureDate">
     </div>
@@ -205,10 +195,16 @@ const pages = {
     </div>
 
     <div class="panel">
-      <button id="savePerformanceButton"
-        onclick="savePerformance()">
+      <button id="savePerformanceButton" onclick="savePerformance()">
         Save Evaluation
       </button>
+
+      <button id="cancelPerformanceEdit"
+        onclick="cancelPerformanceEdit()"
+        style="display:none;">
+        Cancel Update
+      </button>
+
       <p id="performanceMessage"></p>
     </div>
 
@@ -223,21 +219,21 @@ const pages = {
     <div class="panel">
       <h3>Record Attendance</h3>
 
-      <label for="attendanceType">Attendance for</label>
+      <label>Attendance for</label>
       <select id="attendanceType" onchange="loadAttendanceNames()">
         <option value="students">Students</option>
         <option value="teachers">Teachers</option>
       </select>
 
-      <label for="attendancePerson">Name</label>
+      <label>Name</label>
       <select id="attendancePerson">
         <option value="">Loading names...</option>
       </select>
 
-      <label for="attendanceDate">Date</label>
+      <label>Date</label>
       <input type="date" id="attendanceDate">
 
-      <label for="attendanceStatus">Status</label>
+      <label>Status</label>
       <select id="attendanceStatus">
         <option value="Present">Present</option>
         <option value="Absent">Absent</option>
@@ -267,6 +263,8 @@ const pages = {
     </div>
   `
 };
+
+/* GENERAL HELPERS */
 
 function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -317,6 +315,8 @@ function showPage(page, button) {
   }
 }
 
+/* STUDENTS, TEACHERS AND CLASSES */
+
 async function displayRecords(collectionName, elementId) {
   const element = document.getElementById(elementId);
   if (!element) return;
@@ -326,7 +326,7 @@ async function displayRecords(collectionName, elementId) {
   try {
     const records = await getRecords(collectionName);
 
-    if (records.length === 0) {
+    if (!records.length) {
       element.innerHTML = "<p>No records found.</p>";
       return;
     }
@@ -335,7 +335,7 @@ async function displayRecords(collectionName, elementId) {
       <div class="panel">
         <strong>${escapeHTML(record.name)}</strong>
         <p>${escapeHTML(record.code || "")}</p>
-        <button onclick="removeRecord('${record.id}', '${collectionName}')">
+        <button onclick="removeRecord('${escapeHTML(record.id)}','${collectionName}')">
           Delete
         </button>
       </div>
@@ -442,9 +442,7 @@ async function addClass() {
     loadClasses
   );
 
-  if (saved) {
-    $("#className").value = "";
-  }
+  if (saved) $("#className").value = "";
 }
 
 /* TEACHER PERFORMANCE */
@@ -458,7 +456,7 @@ async function loadPerformanceTeachers() {
   try {
     const teachers = await getRecords("teachers");
 
-    if (teachers.length === 0) {
+    if (!teachers.length) {
       select.innerHTML =
         `<option value="">No teachers found. Register first.</option>`;
       return;
@@ -511,7 +509,6 @@ function renderPerformanceAreas() {
 function addPerformanceArea() {
   const input = $("#newPerformanceArea");
   const message = $("#areaMessage");
-
   const area = input.value.trim();
 
   if (!area) {
@@ -527,7 +524,6 @@ function addPerformanceArea() {
   }
 
   performanceAreas.push(area);
-
   input.value = "";
   message.textContent = "Performance area added successfully!";
 
@@ -583,38 +579,12 @@ function updatePerformanceScore() {
   $("#performanceOverall").textContent = result.overall;
 }
 
-async function savePerformance() {
-  if (performanceSaving) return;
-
-  const message = $("#performanceMessage");
-  const button = $("#savePerformanceButton");
-
+function getPerformanceFormData() {
   const teacherSelect = $("#performanceTeacher");
   const selectedTeacher =
     teacherSelect.options[teacherSelect.selectedIndex];
 
-  const teacherId = teacherSelect.value;
-  const teacherName = selectedTeacher?.dataset.name || "";
-  const teacherCode = selectedTeacher?.dataset.code || "";
-
-  const date = $("#performanceDate").value;
   const result = calculatePerformance();
-
-  if (!teacherId) {
-    message.textContent = "Please select a teacher.";
-    return;
-  }
-
-  if (!date) {
-    message.textContent = "Please select evaluation date.";
-    return;
-  }
-
-  if (result.completed !== performanceAreas.length) {
-    message.textContent =
-      "Please select a rating for every performance area.";
-    return;
-  }
 
   const areas = Array.from(
     document.querySelectorAll(".performance-rating")
@@ -626,12 +596,13 @@ async function savePerformance() {
     )?.label || ""
   }));
 
-  const evaluation = {
-    teacherId,
-    teacherName,
-    teacherCode,
+  return {
+    teacherId: teacherSelect.value,
+    teacherName: selectedTeacher?.dataset.name || "",
+    teacherCode: selectedTeacher?.dataset.code || "",
+
     department: $("#performanceDepartment").value.trim(),
-    date,
+    date: $("#performanceDate").value,
     academicYear: $("#performanceYear").value.trim(),
 
     areas,
@@ -668,15 +639,61 @@ async function savePerformance() {
     evaluatorName: $("#evaluatorName").value.trim(),
     evaluatorPosition: $("#evaluatorPosition").value.trim()
   };
+}
+
+async function savePerformance() {
+  if (performanceSaving) return;
+
+  const message = $("#performanceMessage");
+  const button = $("#savePerformanceButton");
+
+  const evaluation = getPerformanceFormData();
+  const result = calculatePerformance();
+
+  if (!evaluation.teacherId) {
+    message.textContent = "Please select a teacher.";
+    return;
+  }
+
+  if (!evaluation.date) {
+    message.textContent = "Please select evaluation date.";
+    return;
+  }
+
+  if (result.completed !== performanceAreas.length) {
+    message.textContent =
+      "Please select a rating for every performance area.";
+    return;
+  }
 
   performanceSaving = true;
   button.disabled = true;
-  button.textContent = "Saving...";
+  button.textContent = editingPerformanceId ? "Updating..." : "Saving...";
 
   try {
-    await addRecord("performance", evaluation);
+    if (editingPerformanceId) {
+      await updateRecord(
+        "performance",
+        editingPerformanceId,
+        evaluation
+      );
 
-    message.textContent = "Performance evaluation saved successfully!";
+      message.textContent =
+        "Performance evaluation updated successfully!";
+
+      editingPerformanceId = null;
+
+    } else {
+      await addRecord("performance", evaluation);
+
+      message.textContent =
+        "Performance evaluation saved successfully!";
+    }
+
+    button.textContent = "Save Evaluation";
+
+    const cancelButton = $("#cancelPerformanceEdit");
+    if (cancelButton) cancelButton.style.display = "none";
 
     await loadPerformanceRecords();
 
@@ -687,7 +704,10 @@ async function savePerformance() {
   } finally {
     performanceSaving = false;
     button.disabled = false;
-    button.textContent = "Save Evaluation";
+
+    if (!editingPerformanceId) {
+      button.textContent = "Save Evaluation";
+    }
   }
 }
 
@@ -700,7 +720,7 @@ async function loadPerformanceRecords() {
   try {
     const records = await getRecords("performance");
 
-    if (records.length === 0) {
+    if (!records.length) {
       element.innerHTML = "<p>No evaluations found.</p>";
       return;
     }
@@ -711,21 +731,75 @@ async function loadPerformanceRecords() {
 
     element.innerHTML = records.map(record => `
       <div class="panel">
-        <h3>${escapeHTML(record.teacherName)}</h3>
-        <p>Date: ${escapeHTML(record.date)}</p>
-        <p>Department: ${escapeHTML(record.department || "")}</p>
-        <p>
-          Total: ${escapeHTML(record.totalScore)}
-          / ${escapeHTML(record.maximumScore)}
-        </p>
-        <p>Percentage: ${escapeHTML(record.percentage)}%</p>
-        <p>Overall Rating: ${escapeHTML(record.overallRating)}</p>
+        <h3>${escapeHTML(record.teacherName || "")}</h3>
 
-        <button onclick="printPerformance('${record.id}')">
+        <p><strong>Teacher ID:</strong>
+          ${escapeHTML(record.teacherCode || "")}
+        </p>
+
+        <p><strong>Date:</strong>
+          ${escapeHTML(record.date || "")}
+        </p>
+
+        <p><strong>Department:</strong>
+          ${escapeHTML(record.department || "")}
+        </p>
+
+        <h4>Performance Areas and Results</h4>
+
+        <table>
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Performance Area</th>
+              <th>Rating</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(record.areas || []).map((area, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${escapeHTML(area.name)}</td>
+                <td>${escapeHTML(area.rating)}</td>
+                <td>${escapeHTML(area.score)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+
+        <h4>Overall Performance Result</h4>
+
+        <p>Total Score:
+          ${escapeHTML(record.totalScore)} /
+          ${escapeHTML(record.maximumScore)}
+        </p>
+
+        <p>Average: ${escapeHTML(record.average)}</p>
+        <p>Percentage: ${escapeHTML(record.percentage)}%</p>
+
+        <p><strong>Overall Rating:
+          ${escapeHTML(record.overallRating)}
+        </strong></p>
+
+        <h4>Teacher's Strengths</h4>
+        <p>${escapeHTML(record.strengths || "")}</p>
+
+        <h4>Areas for Improvement</h4>
+        <p>${escapeHTML(record.improvements || "")}</p>
+
+        <h4>Recommendations</h4>
+        <p>${escapeHTML(record.recommendations || "")}</p>
+
+        <button onclick="editPerformance('${escapeHTML(record.id)}')">
+          Edit / Update
+        </button>
+
+        <button onclick="printPerformance('${escapeHTML(record.id)}')">
           Print Evaluation
         </button>
 
-        <button onclick="removeRecord('${record.id}', 'performance')">
+        <button onclick="removeRecord('${escapeHTML(record.id)}','performance')">
           Delete
         </button>
       </div>
@@ -737,13 +811,113 @@ async function loadPerformanceRecords() {
   }
 }
 
-async function printPerformance(id) {
+async function editPerformance(id) {
   try {
     const records = await getRecords("performance");
-    const record = records.find(item => item.id === id);
+
+    const record = records.find(
+      item => String(item.id) === String(id)
+    );
 
     if (!record) {
       alert("Evaluation not found.");
+      return;
+    }
+
+    editingPerformanceId = id;
+
+    await loadPerformanceTeachers();
+
+    $("#performanceTeacher").value = record.teacherId || "";
+    $("#performanceDepartment").value = record.department || "";
+    $("#performanceDate").value = record.date || "";
+    $("#performanceYear").value = record.academicYear || "";
+
+    performanceAreas = (record.areas || []).map(area => area.name);
+
+    renderPerformanceAreas();
+
+    document.querySelectorAll(".performance-rating").forEach(
+      (select, index) => {
+        const savedArea = (record.areas || [])[index];
+        if (savedArea) select.value = String(savedArea.score);
+      }
+    );
+
+    updatePerformanceScore();
+
+    const fields = {
+      teacherStrengths: record.strengths,
+      teacherImprovements: record.improvements,
+      teacherRecommendations: record.recommendations,
+
+      departmentComment: record.departmentComment,
+      departmentHeadName: record.departmentHeadName,
+      departmentHeadSignature: record.departmentHeadSignature,
+      departmentHeadDate: record.departmentHeadDate,
+
+      deputyComment: record.deputyComment,
+      deputyName: record.deputyName,
+      deputySignature: record.deputySignature,
+      deputyDate: record.deputyDate,
+
+      principalComment: record.principalComment,
+      principalName: record.principalName,
+      principalSignature: record.principalSignature,
+      principalDate: record.principalDate,
+
+      teacherComment: record.teacherComment,
+      teacherSignature: record.teacherSignature,
+      teacherSignatureDate: record.teacherSignatureDate,
+
+      evaluatorName: record.evaluatorName,
+      evaluatorPosition: record.evaluatorPosition
+    };
+
+    Object.entries(fields).forEach(([fieldId, value]) => {
+      const field = document.getElementById(fieldId);
+      if (field) field.value = value || "";
+    });
+
+    $("#savePerformanceButton").textContent = "Update Evaluation";
+    $("#cancelPerformanceEdit").style.display = "inline-block";
+
+    $("#performanceMessage").textContent =
+      "Editing saved evaluation. Make changes and click Update Evaluation.";
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+  } catch (error) {
+    console.error(error);
+    alert("Unable to edit evaluation: " + error.message);
+  }
+}
+
+function cancelPerformanceEdit() {
+  editingPerformanceId = null;
+  performanceAreas = [
+    "Student Progress",
+    "Syllabus Coverage",
+    "Lesson Preparation",
+    "Punctuality",
+    "Classroom Performance",
+    "Assessment"
+  ];
+
+  const activeButton = document.querySelector("nav button.active");
+  showPage("performance", activeButton);
+}
+
+async function printPerformance(id) {
+  try {
+    const records = await getRecords("performance");
+
+    const record = records.find(
+      item => String(item.id) === String(id)
+    );
+
+    if (!record) {
+      alert("Evaluation not found. Please check the record ID in db.js.");
       return;
     }
 
@@ -767,10 +941,10 @@ async function printPerformance(id) {
       <div class="approval">
         <h3>${title}</h3>
         <p><strong>Comment:</strong></p>
-        <p>${escapeHTML(comment || " ")}</p>
-        <p><strong>Name:</strong> ${escapeHTML(name || " ")}</p>
-        <p><strong>Signature:</strong> ${escapeHTML(signature || " ")}</p>
-        <p><strong>Date:</strong> ${escapeHTML(date || " ")}</p>
+        <p>${escapeHTML(comment || "")}</p>
+        <p><strong>Name:</strong> ${escapeHTML(name || "")}</p>
+        <p><strong>Signature:</strong> ${escapeHTML(signature || "")}</p>
+        <p><strong>Date:</strong> ${escapeHTML(date || "")}</p>
       </div>
     `;
 
@@ -780,6 +954,7 @@ async function printPerformance(id) {
       <head>
         <meta charset="UTF-8">
         <title>Teacher Performance Evaluation</title>
+
         <style>
           @page {
             size: A4;
@@ -793,19 +968,12 @@ async function printPerformance(id) {
             line-height: 1.5;
           }
 
-          h1, h2, h3 {
+          h1, h2 {
             text-align: center;
           }
 
-          h1 {
-            font-size: 20px;
-            margin-bottom: 4px;
-          }
-
-          h2 {
-            font-size: 16px;
-            margin-top: 4px;
-          }
+          h1 { font-size: 20px; }
+          h2 { font-size: 16px; }
 
           .subtitle {
             text-align: center;
@@ -831,31 +999,22 @@ async function printPerformance(id) {
             text-align: left;
           }
 
-          th {
-            background: #eee;
-          }
+          th { background: #eee; }
 
-          .summary {
+          .summary, .approval {
             border: 1px solid #333;
             padding: 10px;
             margin: 12px 0;
           }
 
           .approval {
-            border: 1px solid #333;
-            padding: 10px;
-            margin-top: 12px;
-            min-height: 105px;
+            min-height: 100px;
             page-break-inside: avoid;
           }
 
           .approval h3 {
             text-align: left;
             margin-top: 0;
-          }
-
-          .signatures {
-            margin-top: 15px;
           }
 
           .footer {
@@ -865,9 +1024,7 @@ async function printPerformance(id) {
           }
 
           @media print {
-            button {
-              display: none;
-            }
+            button { display: none; }
           }
         </style>
       </head>
@@ -880,9 +1037,10 @@ async function printPerformance(id) {
           <div><strong>Teacher:</strong> ${escapeHTML(record.teacherName)}</div>
           <div><strong>Teacher ID:</strong> ${escapeHTML(record.teacherCode || "")}</div>
           <div><strong>Department:</strong> ${escapeHTML(record.department || "")}</div>
-          <div><strong>Evaluation Date:</strong> ${escapeHTML(record.date)}</div>
+          <div><strong>Evaluation Date:</strong> ${escapeHTML(record.date || "")}</div>
           <div><strong>Academic Year:</strong> ${escapeHTML(record.academicYear || "")}</div>
           <div><strong>Evaluator:</strong> ${escapeHTML(record.evaluatorName || "")}</div>
+          <div><strong>Evaluator Position:</strong> ${escapeHTML(record.evaluatorPosition || "")}</div>
         </div>
 
         <h2>PERFORMANCE EVALUATION CRITERIA</h2>
@@ -896,9 +1054,7 @@ async function printPerformance(id) {
               <th>Score</th>
             </tr>
           </thead>
-          <tbody>
-            ${areaRows}
-          </tbody>
+          <tbody>${areaRows}</tbody>
         </table>
 
         <div class="summary">
@@ -910,13 +1066,13 @@ async function printPerformance(id) {
         </div>
 
         <h3>TEACHER'S STRENGTHS</h3>
-        <p>${escapeHTML(record.strengths || " ")}</p>
+        <p>${escapeHTML(record.strengths || "")}</p>
 
         <h3>AREAS FOR IMPROVEMENT</h3>
-        <p>${escapeHTML(record.improvements || " ")}</p>
+        <p>${escapeHTML(record.improvements || "")}</p>
 
         <h3>RECOMMENDATIONS</h3>
-        <p>${escapeHTML(record.recommendations || " ")}</p>
+        <p>${escapeHTML(record.recommendations || "")}</p>
 
         ${commentSection(
           "DEPARTMENT HEAD'S COMMENT AND SIGNATURE",
@@ -950,10 +1106,10 @@ async function printPerformance(id) {
           record.teacherSignatureDate
         )}
 
-        <div class="approval signatures">
+        <div class="approval">
           <h3>EVALUATOR</h3>
-          <p>Name: ${escapeHTML(record.evaluatorName || " ")}</p>
-          <p>Position: ${escapeHTML(record.evaluatorPosition || " ")}</p>
+          <p>Name: ${escapeHTML(record.evaluatorName || "")}</p>
+          <p>Position: ${escapeHTML(record.evaluatorPosition || "")}</p>
         </div>
 
         <div class="footer">
@@ -962,6 +1118,7 @@ async function printPerformance(id) {
 
         <script>
           window.onload = function() {
+            window.focus();
             window.print();
           };
         <\/script>
@@ -990,7 +1147,7 @@ async function loadAttendanceNames() {
   try {
     const people = await getRecords(type);
 
-    if (people.length === 0) {
+    if (!people.length) {
       select.innerHTML =
         `<option value="">No names found. Register first.</option>`;
       return;
@@ -1002,7 +1159,8 @@ async function loadAttendanceNames() {
         <option value="${escapeHTML(person.id)}"
           data-name="${escapeHTML(person.name)}"
           data-code="${escapeHTML(person.code || "")}">
-          ${escapeHTML(person.name)}${person.code ? " — " + escapeHTML(person.code) : ""}
+          ${escapeHTML(person.name)}
+          ${person.code ? " — " + escapeHTML(person.code) : ""}
         </option>
       `).join("")}
     `;
@@ -1019,11 +1177,13 @@ async function saveAttendance() {
   const type = $("#attendanceType").value;
   const personSelect = $("#attendancePerson");
   const selectedOption = personSelect.options[personSelect.selectedIndex];
+
   const personId = personSelect.value;
   const personName = selectedOption?.dataset.name || "";
   const personCode = selectedOption?.dataset.code || "";
   const date = $("#attendanceDate").value;
   const status = $("#attendanceStatus").value;
+
   const message = $("#attendanceMessage");
   const button = $("#saveAttendanceButton");
 
@@ -1074,7 +1234,7 @@ async function loadAttendanceRecords() {
   try {
     const records = await getRecords("attendance");
 
-    if (records.length === 0) {
+    if (!records.length) {
       element.innerHTML = "<p>No attendance records found.</p>";
       return;
     }
@@ -1094,7 +1254,7 @@ async function loadAttendanceRecords() {
           </p>
           <p>Date: ${escapeHTML(record.date)}</p>
           <p>Status: ${escapeHTML(record.status)}</p>
-          <button onclick="removeRecord('${record.id}', 'attendance')">
+          <button onclick="removeRecord('${escapeHTML(record.id)}','attendance')">
             Delete
           </button>
         </div>
@@ -1146,6 +1306,8 @@ window.saveAttendance = saveAttendance;
 
 window.addPerformanceArea = addPerformanceArea;
 window.savePerformance = savePerformance;
+window.editPerformance = editPerformance;
+window.cancelPerformanceEdit = cancelPerformanceEdit;
 window.printPerformance = printPerformance;
 window.updatePerformanceScore = updatePerformanceScore;
 
