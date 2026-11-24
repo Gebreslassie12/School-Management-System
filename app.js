@@ -10,6 +10,7 @@ import {
 const $ = selector => document.querySelector(selector);
 
 let currentUser = null;
+let attendanceSaving = false;
 
 const pages = {
   dashboard: `
@@ -80,7 +81,35 @@ const pages = {
   attendance: `
     <h2>Attendance</h2>
     <div class="panel">
-      <p>Student and teacher attendance management will be developed here.</p>
+      <h3>Record Attendance</h3>
+
+      <label for="attendanceType">Attendance for</label>
+      <select id="attendanceType" onchange="loadAttendanceNames()">
+        <option value="students">Students</option>
+        <option value="teachers">Teachers</option>
+      </select>
+
+      <label for="attendancePerson">Name</label>
+      <select id="attendancePerson">
+        <option value="">Loading names...</option>
+      </select>
+
+      <label for="attendanceDate">Date</label>
+      <input type="date" id="attendanceDate">
+
+      <label for="attendanceStatus">Status</label>
+      <select id="attendanceStatus">
+        <option value="Present">Present</option>
+        <option value="Absent">Absent</option>
+        <option value="Late">Late</option>
+      </select>
+
+      <button id="saveAttendanceButton" onclick="saveAttendance()">
+        Save Attendance
+      </button>
+
+      <p id="attendanceMessage"></p>
+      <div id="attendanceList"></div>
     </div>
   `,
 
@@ -100,13 +129,21 @@ const pages = {
 };
 
 function escapeHTML(value) {
-  return String(value).replace(/[&<>"']/g, char => ({
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
     "'": "&#39;"
   })[char]);
+}
+
+function getLocalDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function showPage(page, button) {
@@ -124,6 +161,12 @@ function showPage(page, button) {
   if (page === "teachers") loadTeachers();
   if (page === "classes") loadClasses();
   if (page === "dashboard") loadDashboard();
+
+  if (page === "attendance") {
+    $("#attendanceDate").value = getLocalDate();
+    loadAttendanceNames();
+    loadAttendanceRecords();
+  }
 }
 
 async function displayRecords(collectionName, elementId) {
@@ -176,17 +219,9 @@ async function loadDashboard() {
       getRecords("classes")
     ]);
 
-    if ($("#studentCount")) {
-      $("#studentCount").textContent = students.length;
-    }
-
-    if ($("#teacherCount")) {
-      $("#teacherCount").textContent = teachers.length;
-    }
-
-    if ($("#classCount")) {
-      $("#classCount").textContent = classes.length;
-    }
+    if ($("#studentCount")) $("#studentCount").textContent = students.length;
+    if ($("#teacherCount")) $("#teacherCount").textContent = teachers.length;
+    if ($("#classCount")) $("#classCount").textContent = classes.length;
 
   } catch (error) {
     console.error(error);
@@ -208,7 +243,6 @@ async function saveRecord(collectionName, name, code, messageId, reloadFunction)
     });
 
     message.textContent = "Saved successfully!";
-
     await reloadFunction();
     await loadDashboard();
 
@@ -265,6 +299,131 @@ async function addClass() {
   }
 }
 
+async function loadAttendanceNames() {
+  const type = $("#attendanceType")?.value;
+  const select = $("#attendancePerson");
+
+  if (!type || !select) return;
+
+  select.innerHTML = `<option value="">Loading...</option>`;
+
+  try {
+    const people = await getRecords(type);
+
+    if (people.length === 0) {
+      select.innerHTML = `<option value="">No names found. Register first.</option>`;
+      return;
+    }
+
+    select.innerHTML = `
+      <option value="">Select a name</option>
+      ${people.map(person => `
+        <option value="${escapeHTML(person.id)}"
+          data-name="${escapeHTML(person.name)}"
+          data-code="${escapeHTML(person.code || "")}">
+          ${escapeHTML(person.name)}${person.code ? " — " + escapeHTML(person.code) : ""}
+        </option>
+      `).join("")}
+    `;
+
+  } catch (error) {
+    console.error(error);
+    select.innerHTML = `<option value="">Could not load names.</option>`;
+  }
+}
+
+async function saveAttendance() {
+  if (attendanceSaving) return;
+
+  const type = $("#attendanceType").value;
+  const personSelect = $("#attendancePerson");
+  const selectedOption = personSelect.options[personSelect.selectedIndex];
+  const personId = personSelect.value;
+  const personName = selectedOption?.dataset.name || "";
+  const personCode = selectedOption?.dataset.code || "";
+  const date = $("#attendanceDate").value;
+  const status = $("#attendanceStatus").value;
+  const message = $("#attendanceMessage");
+  const button = $("#saveAttendanceButton");
+
+  if (!personId) {
+    message.textContent = "Please select a student or teacher.";
+    return;
+  }
+
+  if (!date) {
+    message.textContent = "Please select a date.";
+    return;
+  }
+
+  attendanceSaving = true;
+  button.disabled = true;
+  button.textContent = "Saving...";
+
+  try {
+    await addRecord("attendance", {
+      personId,
+      name: personName,
+      code: personCode,
+      personType: type,
+      date,
+      status
+    });
+
+    message.textContent = "Attendance saved successfully!";
+    await loadAttendanceRecords();
+
+  } catch (error) {
+    console.error(error);
+    message.textContent = "Error: " + error.message;
+
+  } finally {
+    attendanceSaving = false;
+    button.disabled = false;
+    button.textContent = "Save Attendance";
+  }
+}
+
+async function loadAttendanceRecords() {
+  const element = $("#attendanceList");
+  if (!element) return;
+
+  element.textContent = "Loading attendance...";
+
+  try {
+    const records = await getRecords("attendance");
+
+    if (records.length === 0) {
+      element.innerHTML = "<p>No attendance records found.</p>";
+      return;
+    }
+
+    records.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+    element.innerHTML = `
+      <h3>Attendance Records</h3>
+      ${records.map(record => `
+        <div class="panel">
+          <strong>${escapeHTML(record.name)}</strong>
+          <p>
+            ${escapeHTML(record.personType === "teachers" ? "Teacher" : "Student")}
+            ${record.code ? " — " + escapeHTML(record.code) : ""}
+          </p>
+          <p>Date: ${escapeHTML(record.date)}</p>
+          <p>Status: ${escapeHTML(record.status)}</p>
+          <button onclick="removeRecord('${record.id}', 'attendance')">
+            Delete
+          </button>
+        </div>
+      `).join("")}
+    `;
+
+  } catch (error) {
+    console.error(error);
+    element.textContent = "Unable to load attendance records.";
+  }
+}
+
 async function removeRecord(id, collectionName) {
   const confirmed = confirm(
     "Are you sure you want to delete this record?"
@@ -275,13 +434,10 @@ async function removeRecord(id, collectionName) {
   try {
     await deleteRecord(collectionName, id);
 
-    if (collectionName === "students") {
-      await loadStudents();
-    } else if (collectionName === "teachers") {
-      await loadTeachers();
-    } else if (collectionName === "classes") {
-      await loadClasses();
-    }
+    if (collectionName === "students") await loadStudents();
+    if (collectionName === "teachers") await loadTeachers();
+    if (collectionName === "classes") await loadClasses();
+    if (collectionName === "attendance") await loadAttendanceRecords();
 
     await loadDashboard();
 
@@ -296,6 +452,8 @@ window.addStudent = addStudent;
 window.addTeacher = addTeacher;
 window.addClass = addClass;
 window.removeRecord = removeRecord;
+window.loadAttendanceNames = loadAttendanceNames;
+window.saveAttendance = saveAttendance;
 
 onAuthStateChanged(auth, user => {
   if (!user) {
