@@ -1,10 +1,10 @@
-
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { auth } from "./firebase.js";
 
 import {
   addRecord,
-  getRecords
+  getRecords,
+  deleteRecord
 } from "./db.js";
 
 const $ = selector => document.querySelector(selector);
@@ -15,11 +15,23 @@ const pages = {
   dashboard: `
     <h2>Dashboard</h2>
     <div class="cards">
-      <div class="card"><h3>Students</h3><div class="number" id="studentCount">0</div></div>
-      <div class="card"><h3>Teachers</h3><div class="number" id="teacherCount">0</div></div>
-      <div class="card"><h3>Classes</h3><div class="number" id="classCount">0</div></div>
+      <div class="card">
+        <h3>Students</h3>
+        <div class="number" id="studentCount">0</div>
+      </div>
+      <div class="card">
+        <h3>Teachers</h3>
+        <div class="number" id="teacherCount">0</div>
+      </div>
+      <div class="card">
+        <h3>Classes</h3>
+        <div class="number" id="classCount">0</div>
+      </div>
     </div>
-    <div class="panel"><h3>Welcome</h3><p>Welcome to School Management System.</p></div>
+    <div class="panel">
+      <h3>Welcome</h3>
+      <p>Welcome to School Management System.</p>
+    </div>
   `,
 
   students: `
@@ -132,6 +144,9 @@ async function displayRecords(collectionName, elementId) {
       <div class="panel">
         <strong>${escapeHTML(record.name)}</strong>
         <p>${escapeHTML(record.code || "")}</p>
+        <button onclick="removeRecord('${record.id}', '${collectionName}')">
+          Delete
+        </button>
       </div>
     `).join("");
 
@@ -161,9 +176,17 @@ async function loadDashboard() {
       getRecords("classes")
     ]);
 
-    if ($("#studentCount")) $("#studentCount").textContent = students.length;
-    if ($("#teacherCount")) $("#teacherCount").textContent = teachers.length;
-    if ($("#classCount")) $("#classCount").textContent = classes.length;
+    if ($("#studentCount")) {
+      $("#studentCount").textContent = students.length;
+    }
+
+    if ($("#teacherCount")) {
+      $("#teacherCount").textContent = teachers.length;
+    }
+
+    if ($("#classCount")) {
+      $("#classCount").textContent = classes.length;
+    }
 
   } catch (error) {
     console.error(error);
@@ -175,7 +198,7 @@ async function saveRecord(collectionName, name, code, messageId, reloadFunction)
 
   if (!name.trim()) {
     message.textContent = "Please enter a name.";
-    return;
+    return false;
   }
 
   try {
@@ -187,15 +210,19 @@ async function saveRecord(collectionName, name, code, messageId, reloadFunction)
     message.textContent = "Saved successfully!";
 
     await reloadFunction();
+    await loadDashboard();
+
+    return true;
 
   } catch (error) {
     console.error(error);
     message.textContent = "Error: " + error.message;
+    return false;
   }
 }
 
 async function addStudent() {
-  await saveRecord(
+  const saved = await saveRecord(
     "students",
     $("#studentName").value,
     $("#studentId").value,
@@ -203,12 +230,14 @@ async function addStudent() {
     loadStudents
   );
 
-  $("#studentName").value = "";
-  $("#studentId").value = "";
+  if (saved) {
+    $("#studentName").value = "";
+    $("#studentId").value = "";
+  }
 }
 
 async function addTeacher() {
-  await saveRecord(
+  const saved = await saveRecord(
     "teachers",
     $("#teacherName").value,
     $("#teacherId").value,
@@ -216,12 +245,14 @@ async function addTeacher() {
     loadTeachers
   );
 
-  $("#teacherName").value = "";
-  $("#teacherId").value = "";
+  if (saved) {
+    $("#teacherName").value = "";
+    $("#teacherId").value = "";
+  }
 }
 
 async function addClass() {
-  await saveRecord(
+  const saved = await saveRecord(
     "classes",
     $("#className").value,
     "",
@@ -229,13 +260,42 @@ async function addClass() {
     loadClasses
   );
 
-  $("#className").value = "";
+  if (saved) {
+    $("#className").value = "";
+  }
+}
+
+async function removeRecord(id, collectionName) {
+  const confirmed = confirm(
+    "Are you sure you want to delete this record?"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await deleteRecord(collectionName, id);
+
+    if (collectionName === "students") {
+      await loadStudents();
+    } else if (collectionName === "teachers") {
+      await loadTeachers();
+    } else if (collectionName === "classes") {
+      await loadClasses();
+    }
+
+    await loadDashboard();
+
+  } catch (error) {
+    console.error(error);
+    alert("Unable to delete record: " + error.message);
+  }
 }
 
 window.showPage = showPage;
 window.addStudent = addStudent;
 window.addTeacher = addTeacher;
 window.addClass = addClass;
+window.removeRecord = removeRecord;
 
 onAuthStateChanged(auth, user => {
   if (!user) {
