@@ -909,35 +909,14 @@ function cancelPerformanceEdit() {
   showPage("performance", activeButton);
 }
 
+
+
 /* PRINT TEACHER PERFORMANCE EVALUATION */
 
 async function printPerformance(id) {
-  // Open the window immediately, before waiting for Firestore.
-  // This helps prevent Android Chrome from blocking the popup.
-  const printWindow = window.open("", "_blank");
-
-  if (!printWindow) {
-    alert("Please allow pop-ups for this website, then try again.");
-    return;
-  }
+  let frame;
 
   try {
-    printWindow.document.open();
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Preparing Evaluation</title>
-      </head>
-      <body>
-        <p style="font-family:Arial;text-align:center;margin-top:50px;">
-          Preparing evaluation report...
-        </p>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-
     const records = await getRecords("performance");
 
     const record = records.find(
@@ -945,7 +924,6 @@ async function printPerformance(id) {
     );
 
     if (!record) {
-      printWindow.close();
       alert("Evaluation not found.");
       return;
     }
@@ -975,7 +953,9 @@ async function printPerformance(id) {
       <html>
       <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport"
+          content="width=device-width, initial-scale=1">
+
         <title>Teacher Performance Evaluation</title>
 
         <style>
@@ -995,13 +975,8 @@ async function printPerformance(id) {
             text-align: center;
           }
 
-          h1 {
-            font-size: 20px;
-          }
-
-          h2 {
-            font-size: 16px;
-          }
+          h1 { font-size: 20px; }
+          h2 { font-size: 16px; }
 
           .subtitle {
             text-align: center;
@@ -1027,9 +1002,7 @@ async function printPerformance(id) {
             text-align: left;
           }
 
-          th {
-            background: #eee;
-          }
+          th { background: #eee; }
 
           .summary, .approval {
             border: 1px solid #333;
@@ -1051,12 +1024,6 @@ async function printPerformance(id) {
             text-align: center;
             margin-top: 20px;
             font-size: 10px;
-          }
-
-          @media print {
-            button {
-              display: none;
-            }
           }
         </style>
       </head>
@@ -1086,9 +1053,7 @@ async function printPerformance(id) {
               <th>Score</th>
             </tr>
           </thead>
-          <tbody>
-            ${areaRows}
-          </tbody>
+          <tbody>${areaRows}</tbody>
         </table>
 
         <div class="summary">
@@ -1153,26 +1118,72 @@ async function printPerformance(id) {
       </html>
     `;
 
-    printWindow.document.open();
-    printWindow.document.write(report);
-    printWindow.document.close();
+    frame = document.createElement("iframe");
 
-    // Allow the report to render before opening the print dialog.
-    printWindow.setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-    }, 700);
+    frame.style.position = "fixed";
+    frame.style.width = "1px";
+    frame.style.height = "1px";
+    frame.style.left = "0";
+    frame.style.bottom = "0";
+    frame.style.border = "0";
+
+    document.body.appendChild(frame);
+
+    const printDocument =
+      frame.contentWindow.document;
+
+    printDocument.open();
+    printDocument.write(report);
+    printDocument.close();
+
+    frame.onload = () => {
+      setTimeout(() => {
+        try {
+          frame.contentWindow.focus();
+          frame.contentWindow.print();
+        } catch (error) {
+          console.error(error);
+          alert("Unable to open print dialog: " + error.message);
+        }
+      }, 700);
+    };
 
   } catch (error) {
     console.error(error);
 
-    if (!printWindow.closed) {
-      printWindow.close();
+    if (frame && frame.parentNode) {
+      frame.parentNode.removeChild(frame);
     }
 
     alert("Unable to print evaluation: " + error.message);
   }
 }
+
+
+
+
+
+
+
+
+    
+            
+
+          
+          
+
+        
+    
+
+
+
+
+
+
+
+
+
+
 
 /* ATTENDANCE */
 
