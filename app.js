@@ -907,10 +907,35 @@ function cancelPerformanceEdit() {
   showPage("performance", activeButton);
 }
 
+
+    
 /* PRINT TEACHER PERFORMANCE EVALUATION */
 
 async function printPerformance(id) {
-  let frame;
+  // Open the print window immediately after the button click
+  const printWindow = window.open("", "_blank");
+
+  if (!printWindow) {
+    alert("Popup blocked! Please allow popups for this website and try again.");
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Preparing Evaluation</title>
+    </head>
+    <body style="font-family:Arial;text-align:center;padding:40px">
+      <h2>Preparing Teacher Evaluation...</h2>
+      <p>Please wait.</p>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
 
   try {
     const records = await getRecords("performance");
@@ -920,6 +945,7 @@ async function printPerformance(id) {
     );
 
     if (!record) {
+      printWindow.close();
       alert("Evaluation not found.");
       return;
     }
@@ -949,9 +975,7 @@ async function printPerformance(id) {
       <html>
       <head>
         <meta charset="UTF-8">
-        <meta name="viewport"
-          content="width=device-width, initial-scale=1">
-
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Teacher Performance Evaluation</title>
 
         <style>
@@ -998,7 +1022,9 @@ async function printPerformance(id) {
             text-align: left;
           }
 
-          th { background: #eee; }
+          th {
+            background: #eee;
+          }
 
           .summary, .approval {
             border: 1px solid #333;
@@ -1021,10 +1047,39 @@ async function printPerformance(id) {
             margin-top: 20px;
             font-size: 10px;
           }
+
+          @media screen {
+            body {
+              max-width: 850px;
+              margin: 20px auto;
+              padding: 20px;
+            }
+
+            .print-button {
+              display: block;
+              margin: 20px auto;
+              padding: 12px 25px;
+              background: #0b1f3a;
+              color: white;
+              border: 0;
+              border-radius: 5px;
+              font-size: 16px;
+            }
+          }
+
+          @media print {
+            .print-button {
+              display: none;
+            }
+          }
         </style>
       </head>
 
       <body>
+        <button class="print-button" onclick="window.print()">
+          PRINT EVALUATION
+        </button>
+
         <h1>TEACHER PERFORMANCE EVALUATION</h1>
         <div class="subtitle">School Management System</div>
 
@@ -1114,47 +1169,26 @@ async function printPerformance(id) {
       </html>
     `;
 
-    frame = document.createElement("iframe");
+    printWindow.document.open();
+    printWindow.document.write(report);
+    printWindow.document.close();
 
-    frame.style.position = "fixed";
-    frame.style.width = "1px";
-    frame.style.height = "1px";
-    frame.style.left = "0";
-    frame.style.bottom = "0";
-    frame.style.border = "0";
-
-    // Set the load event before adding the iframe.
-    frame.onload = () => {
-      setTimeout(() => {
-        try {
-          frame.contentWindow.focus();
-          frame.contentWindow.print();
-        } catch (error) {
-          console.error(error);
-          alert("Unable to open print dialog: " + error.message);
-        }
-      }, 700);
-    };
-
-    document.body.appendChild(frame);
-
-    const printDocument = frame.contentWindow.document;
-
-    printDocument.open();
-    printDocument.write(report);
-    printDocument.close();
+    // Show the report first. The user can print manually.
+    printWindow.focus();
 
   } catch (error) {
-    console.error(error);
+    console.error("Print error:", error);
 
-    if (frame && frame.parentNode) {
-      frame.parentNode.removeChild(frame);
+    if (!printWindow.closed) {
+      printWindow.document.body.innerHTML = `
+        <h2>Unable to prepare evaluation</h2>
+        <p>${escapeHTML(error.message)}</p>
+      `;
     }
 
     alert("Unable to print evaluation: " + error.message);
   }
 }
-
 /* ATTENDANCE */
 
 async function loadAttendanceNames() {
