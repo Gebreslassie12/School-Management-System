@@ -95,7 +95,6 @@ const pages = {
 
     <div class="panel">
       <h3>Teacher Information</h3>
-
       <label>Select Teacher</label>
       <select id="performanceTeacher">
         <option value="">Loading teachers...</option>
@@ -114,7 +113,6 @@ const pages = {
     <div class="panel">
       <h3>Performance Evaluation Criteria</h3>
       <p>Select one rating for every performance area.</p>
-
       <div id="performanceAreas"></div>
 
       <hr>
@@ -909,8 +907,6 @@ function cancelPerformanceEdit() {
   showPage("performance", activeButton);
 }
 
-
-
 /* PRINT TEACHER PERFORMANCE EVALUATION */
 
 async function printPerformance(id) {
@@ -1127,15 +1123,7 @@ async function printPerformance(id) {
     frame.style.bottom = "0";
     frame.style.border = "0";
 
-    document.body.appendChild(frame);
-
-    const printDocument =
-      frame.contentWindow.document;
-
-    printDocument.open();
-    printDocument.write(report);
-    printDocument.close();
-
+    // Set the load event before adding the iframe.
     frame.onload = () => {
       setTimeout(() => {
         try {
@@ -1148,6 +1136,14 @@ async function printPerformance(id) {
       }, 700);
     };
 
+    document.body.appendChild(frame);
+
+    const printDocument = frame.contentWindow.document;
+
+    printDocument.open();
+    printDocument.write(report);
+    printDocument.close();
+
   } catch (error) {
     console.error(error);
 
@@ -1158,32 +1154,6 @@ async function printPerformance(id) {
     alert("Unable to print evaluation: " + error.message);
   }
 }
-
-
-
-
-
-
-
-
-    
-            
-
-          
-          
-
-        
-    
-
-
-
-
-
-
-
-
-
-
 
 /* ATTENDANCE */
 
