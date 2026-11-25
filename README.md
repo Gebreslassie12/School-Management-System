@@ -1,58 +1,68 @@
 
-const CACHE_NAME = "lsan-school-system-v1";
+# School Management System
 
-const FILES_TO_CACHE = [
-  "./",
-  "./index.html",
-  "./login.html",
-  "./register.html",
-  "./style.css",
-  "./app.js",
-  "./db.js",
-  "./firebase.js",
-  "./manifest.json"
-];
+A Progressive Web Application (PWA) for managing school activities, developed by LSAN WIN.
 
-self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(FILES_TO_CACHE);
-    })
-  );
+## Project Overview
 
-  self.skipWaiting();
-});
+The School Management System helps schools organize and manage important academic and administrative records in one application.
 
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      );
-    })
-  );
+## Main Features
 
-  self.clients.claim();
-});
+- School registration and login
+- Dashboard
+- Student management
+- Teacher management
+- Class management
+- Attendance management
+- Examination management
+- Student results
+- Teacher performance evaluation
+- School reports
+- Printable reports
+- Offline support through PWA caching
 
-self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
+## Technologies Used
 
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        if (response && response.status === 200) {
-          const copy = response.clone();
+- HTML5
+- CSS3
+- JavaScript
+- Firebase Authentication
+- Cloud Firestore
+- Progressive Web App (PWA)
+- Service Worker
+- GitHub
 
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, copy);
-          });
-        }
+## Application Structure
 
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
-});
+- `index.html` – Main application
+- `login.html` – School login
+- `register.html` – School registration
+- `style.css` – Application design
+- `app.js` – Main application functions
+- `db.js` – Database operations
+- `firebase.js` – Firebase configuration
+- `manifest.json` – PWA settings
+- `sw.js` – Service worker
+- `icons/` – Application icons
+
+## Installation and Usage
+
+1. Open the application website.
+2. Register your school.
+3. Log in using your registered account.
+4. Start managing school records.
+
+## Database and Security
+
+The application uses Firebase Authentication and Cloud Firestore.
+
+Each school has its own data space under its authenticated user ID. Firestore security rules are used to protect school records.
+
+## Developer
+
+**LSAN WIN**
+
+Learn Technology, Build Your Future.
+
+GitHub: https://github.com/Gebreslassie12
