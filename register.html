@@ -1,95 +1,300 @@
 
-<script type="module">
-  import {
-    createUserWithEmailAndPassword,
-    deleteUser
-  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b1f3a">
 
-  import {
-    doc,
-    setDoc,
-    serverTimestamp
-  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  <title>Register School</title>
 
-  import { auth, db } from "./firebase.js";
+  <link rel="stylesheet" href="./style.css">
 
-  const form = document.getElementById("registerForm");
-  const message = document.getElementById("message");
-  const button = document.getElementById("registerButton");
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    const schoolName = document.getElementById("schoolName").value.trim();
-    const ownerName = document.getElementById("ownerName").value.trim();
-    const email = document.getElementById("email").value.trim();
-    const phone = document.getElementById("phone").value.trim();
-    const password = document.getElementById("password").value;
-
-    if (!schoolName || !ownerName || !email || !phone || !password) {
-      message.textContent = "Please complete all fields.";
-      message.style.color = "red";
-      return;
+  <style>
+    .register-box {
+      max-width: 450px;
+      margin: 40px auto;
+      padding: 25px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px #00000015;
     }
 
-    button.disabled = true;
-    button.textContent = "Registering...";
-    message.textContent = "";
+    .register-box input {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      margin: 12px 0;
+      border: 1px solid #ccd5e0;
+      border-radius: 7px;
+      font-size: 16px;
+    }
 
-    let user = null;
+    .register-box button {
+      width: 100%;
+      padding: 13px;
+      background: #0b1f3a;
+      color: white;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 16px;
+    }
 
-    try {
-      const result = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+    .register-box button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
 
-      user = result.user;
+    .register-box a {
+      color: #0077cc;
+    }
 
-      await setDoc(doc(db, "schools", user.uid), {
-        schoolName,
-        ownerName,
-        email,
-        phone,
-        status: "pending",
-        createdAt: serverTimestamp()
-      });
+    #message {
+      overflow-wrap: anywhere;
+      margin-top: 12px;
+    }
+  </style>
+</head>
 
-      message.textContent =
-        "Registration successful. Please login.";
+<body>
 
-      message.style.color = "green";
-      form.reset();
+  <header>
+    <h1>School Management System</h1>
+    <p>By Gebreslassie</p>
+  </header>
 
-      setTimeout(() => {
-        window.location.href = "./login.html";
-      }, 2000);
+  <div class="register-box">
 
-    } catch (error) {
-      console.error(error);
+    <h2>Register Your School</h2>
 
-      if (user) {
-        try {
-          await deleteUser(user);
-        } catch (deleteError) {
-          console.error("Account cleanup failed:", deleteError);
+    <form id="registerForm">
+
+      <input
+        type="text"
+        id="schoolName"
+        placeholder="School Name"
+        autocomplete="organization"
+        required
+      >
+
+      <input
+        type="text"
+        id="ownerName"
+        placeholder="School Owner / Administrator Name"
+        autocomplete="name"
+        required
+      >
+
+      <input
+        type="email"
+        id="email"
+        placeholder="Email Address"
+        autocomplete="email"
+        required
+      >
+
+      <input
+        type="tel"
+        id="phone"
+        placeholder="Phone Number"
+        autocomplete="tel"
+        required
+      >
+
+      <input
+        type="password"
+        id="password"
+        placeholder="Create Password (minimum 6 characters)"
+        autocomplete="new-password"
+        minlength="6"
+        required
+      >
+
+      <button type="submit" id="registerButton">
+        Register School
+      </button>
+
+    </form>
+
+    <p id="message" role="alert" aria-live="polite"></p>
+
+    <p>
+      Already have an account?
+      <a href="./login.html">Login here</a>
+    </p>
+
+  </div>
+
+  <script type="module">
+
+    import {
+      createUserWithEmailAndPassword,
+      deleteUser
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    import {
+      doc,
+      setDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    import { auth, db } from "./firebase.js";
+
+    const form = document.getElementById("registerForm");
+    const message = document.getElementById("message");
+    const button = document.getElementById("registerButton");
+
+    form.addEventListener("submit", async (event) => {
+
+      event.preventDefault();
+
+      const schoolName =
+        document.getElementById("schoolName").value.trim();
+
+      const ownerName =
+        document.getElementById("ownerName").value.trim();
+
+      const email =
+        document.getElementById("email").value.trim();
+
+      const phone =
+        document.getElementById("phone").value.trim();
+
+      const password =
+        document.getElementById("password").value;
+
+      // Validate form
+      if (
+        !schoolName ||
+        !ownerName ||
+        !email ||
+        !phone ||
+        !password
+      ) {
+
+        message.textContent =
+          "Please complete all fields.";
+
+        message.style.color = "red";
+        return;
+
+      }
+
+      if (password.length < 6) {
+
+        message.textContent =
+          "Password must contain at least 6 characters.";
+
+        message.style.color = "red";
+        return;
+
+      }
+
+      button.disabled = true;
+      button.textContent = "Registering...";
+      message.textContent = "";
+
+      let user = null;
+
+      try {
+
+        // Create Firebase Authentication account
+        const result = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+
+        user = result.user;
+
+        // Save school information in Firestore
+        await setDoc(
+          doc(db, "schools", user.uid),
+          {
+            schoolName: schoolName,
+            ownerName: ownerName,
+            email: email,
+            phone: phone,
+            status: "pending",
+            createdAt: serverTimestamp()
+          }
+        );
+
+        message.textContent =
+          "Registration successful. Your account is waiting for approval. Please login.";
+
+        message.style.color = "green";
+
+        form.reset();
+
+        button.textContent = "Registration Complete";
+
+        setTimeout(() => {
+          window.location.href = "./login.html";
+        }, 2500);
+
+      } catch (error) {
+
+        console.error("Registration error:", error);
+
+        // Remove Auth account if Firestore registration failed
+        if (user) {
+
+          try {
+
+            await deleteUser(user);
+
+          } catch (deleteError) {
+
+            console.error(
+              "Account cleanup failed:",
+              deleteError
+            );
+
+          }
+
         }
+
+        if (error.code === "auth/email-already-in-use") {
+
+          message.textContent =
+            "This email is already registered.";
+
+        } else if (error.code === "auth/weak-password") {
+
+          message.textContent =
+            "Password must contain at least 6 characters.";
+
+        } else if (error.code === "auth/invalid-email") {
+
+          message.textContent =
+            "Please enter a valid email address.";
+
+        } else if (error.code === "auth/network-request-failed") {
+
+          message.textContent =
+            "Network error. Please check your internet connection.";
+
+        } else {
+
+          message.textContent =
+            "Registration failed. Please check your information and try again.";
+
+        }
+
+        message.style.color = "red";
+
+        button.disabled = false;
+        button.textContent = "Register School";
+
       }
 
-      if (error.code === "auth/email-already-in-use") {
-        message.textContent = "This email is already registered.";
-      } else if (error.code === "auth/weak-password") {
-        message.textContent = "Password must contain at least 6 characters.";
-      } else if (error.code === "auth/invalid-email") {
-        message.textContent = "Please enter a valid email address.";
-      } else {
-        message.textContent = error.message;
-      }
+    });
 
-      message.style.color = "red";
-      button.disabled = false;
-      button.textContent = "Register School";
-    }
-  });
-</script>
+  </script>
+
+</body>
+</html>
+
