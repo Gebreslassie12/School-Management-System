@@ -1,4 +1,3 @@
-
 const CACHE_NAME = "lsan-school-system-v3";
 
 const FILES_TO_CACHE = [
@@ -60,13 +59,16 @@ self.addEventListener("fetch", event => {
 
         if (response && response.ok) {
           const cache = await caches.open(CACHE_NAME);
-          event.waitUntil(cache.put(request, response.clone()));
+
+          event.waitUntil(
+            cache.put(request, response.clone())
+          );
         }
 
         return response;
-
       } catch (error) {
-        const cachedResponse = await caches.match(request);
+        const cache = await caches.open(CACHE_NAME);
+        const cachedResponse = await cache.match(request);
 
         if (cachedResponse) return cachedResponse;
 
