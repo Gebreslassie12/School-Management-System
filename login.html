@@ -68,9 +68,10 @@
 </div>
 
 <script type="module">
-  import {
-    signInWithEmailAndPassword
-  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+ import {
+  signInWithEmailAndPassword,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   import {
     doc,
@@ -106,14 +107,14 @@
       const schoolSnap = await getDoc(schoolRef);
 
       if (!schoolSnap.exists()) {
-        await auth.signOut();
+        await signOut(auth);
         throw new Error("School registration record not found.");
       }
 
       const school = schoolSnap.data();
 
       if (school.status !== "pending" && school.status !== "active") {
-        await auth.signOut();
+        await signOut(auth);
         throw new Error("Your school account is not approved.");
       }
 
