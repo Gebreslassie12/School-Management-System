@@ -1,87 +1,8 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0b1f3a">
-  <title>School Registration</title>
-  <link rel="stylesheet" href="./style.css">
-  <style>
-    .register-box {
-      max-width: 450px;
-      margin: 40px auto;
-      padding: 25px;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 2px 12px #00000015;
-    }
-    .register-box input {
-      display: block;
-      width: 100%;
-      padding: 12px;
-      margin: 12px 0;
-      border: 1px solid #ccd5e0;
-      border-radius: 7px;
-      font-size: 16px;
-    }
-    .register-box button {
-      width: 100%;
-      padding: 13px;
-      background: #0b1f3a;
-      color: white;
-      border: none;
-      border-radius: 7px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-    .register-box a { color: #0077cc; }
-    #message { overflow-wrap: anywhere; }
-  </style>
-</head>
-<body>
-
-<header>
-  <h1>School Management System</h1>
-  <p>By Gebreslassie</p>
-</header>
-
-<div class="register-box">
-  <h2>Register Your School</h2>
-
-  <form id="registerForm">
-    <input type="text" id="schoolName"
-      placeholder="School name" required>
-
-    <input type="text" id="ownerName"
-      placeholder="Owner full name" required>
-
-    <input type="email" id="email"
-      placeholder="Email address" required>
-
-    <input type="tel" id="phone"
-      placeholder="Phone number" required>
-
-    <input type="password" id="password"
-      placeholder="Password (minimum 6 characters)"
-      minlength="6" required>
-
-    <button type="submit" id="registerButton">
-      Register School
-    </button>
-  </form>
-
-  <p id="message"></p>
-
-  <p>
-    Already registered?
-    <a href="./login.html">Login here</a>
-  </p>
-</div>
-
 <script type="module">
   import {
-    createUserWithEmailAndPassword
+    createUserWithEmailAndPassword,
+    deleteUser
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   import {
@@ -115,6 +36,8 @@
     button.textContent = "Registering...";
     message.textContent = "";
 
+    let user = null;
+
     try {
       const result = await createUserWithEmailAndPassword(
         auth,
@@ -122,13 +45,13 @@
         password
       );
 
-      const user = result.user;
+      user = result.user;
 
       await setDoc(doc(db, "schools", user.uid), {
-        schoolName: schoolName,
-        ownerName: ownerName,
-        email: email,
-        phone: phone,
+        schoolName,
+        ownerName,
+        email,
+        phone,
         status: "pending",
         createdAt: serverTimestamp()
       });
@@ -146,6 +69,14 @@
     } catch (error) {
       console.error(error);
 
+      if (user) {
+        try {
+          await deleteUser(user);
+        } catch (deleteError) {
+          console.error("Account cleanup failed:", deleteError);
+        }
+      }
+
       if (error.code === "auth/email-already-in-use") {
         message.textContent = "This email is already registered.";
       } else if (error.code === "auth/weak-password") {
@@ -162,6 +93,3 @@
     }
   });
 </script>
-
-</body>
-</html>
