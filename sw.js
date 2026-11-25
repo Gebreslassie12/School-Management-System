@@ -1,5 +1,5 @@
 
-const CACHE_NAME = "lsan-school-system-v1";
+const CACHE_NAME = "lsan-school-system-v2";
 
 const FILES_TO_CACHE = [
   "./",
