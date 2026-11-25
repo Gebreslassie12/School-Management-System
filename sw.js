@@ -1,58 +1,17 @@
+Gebreslassie12
+School-Management-System
+Repository navigation
+Code
+Issues
+Pull requests
+Agents
+Actions
+Projects
+Security and quality
+Insights
+Settings
+Error loading page
+An unexpected 500 error occurred. Try reloading the page.
 
-const CACHE_NAME = "lsan-school-system-v2";
-
-const FILES_TO_CACHE = [
-  "./",
-  "./index.html",
-  "./login.html",
-  "./register.html",
-  "./style.css",
-  "./app.js",
-  "./db.js",
-  "./firebase.js",
-  "./manifest.json"
-];
-
-self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(FILES_TO_CACHE);
-    })
-  );
-
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      );
-    })
-  );
-
-  self.clients.claim();
-});
-
-self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
-
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        if (response && response.status === 200) {
-          const copy = response.clone();
-
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, copy);
-          });
-        }
-
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
-});
+Error 403 - Forbidden
+The web app you have attempted to reach has blocked your access.
