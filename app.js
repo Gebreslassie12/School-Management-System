@@ -290,10 +290,43 @@ const pages = {
     </div>
   `,
 
-  reports: `
-    <h2>Reports</h2>
+ 
+  
+  
+  
+  
+    reports: `
+    <h2>School Reports</h2>
+
     <div class="panel">
-      <p>School reports will be developed here.</p>
+      <h3>Generate School Report</h3>
+
+      <label>Report Type</label>
+      <select id="reportType" onchange="changeReportType()">
+        <option value="overview">School Overview</option>
+        <option value="attendance">Attendance Report</option>
+        <option value="results">Examination Results</option>
+        <option value="performance">Teacher Performance</option>
+      </select>
+
+      <div id="reportDateFilters">
+        <label>From Date</label>
+        <input type="date" id="reportFromDate">
+
+        <label>To Date</label>
+        <input type="date" id="reportToDate">
+      </div>
+
+      <button onclick="generateReport()">Generate Report</button>
+      <button onclick="printReport()">Print Report</button>
+
+      <p id="reportMessage"></p>
+    </div>
+
+    <div class="panel">
+      <div id="reportOutput">
+        <p>Select a report type and click Generate Report.</p>
+      </div>
     </div>
   `
 };
@@ -317,6 +350,10 @@ function getLocalDate() {
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+
+
+
 
 function showPage(page, button) {
   if (!pages[page]) return;
@@ -354,6 +391,9 @@ function showPage(page, button) {
     loadExams();
     loadExamOptions();
     loadResults();
+  }
+    if (page === "reports") {
+    changeReportType();
   }
 }
 
@@ -1664,6 +1704,327 @@ async function removeRecord(id, collectionName) {
   }
 }
 
+
+
+/* REPORTS */
+
+function changeReportType() {
+  const type = $("#reportType")?.value;
+  const filters = $("#reportDateFilters");
+
+  if (!type || !filters) return;
+
+  filters.style.display = type === "overview" ? "none" : "block";
+
+  const output = $("#reportOutput");
+  if (output) {
+    output.innerHTML = "<p>Click Generate Report to create the selected report.</p>";
+  }
+
+  const message = $("#reportMessage");
+  if (message) message.textContent = "";
+}
+
+function reportDateMatches(date, fromDate, toDate) {
+  if (!date) return false;
+
+  const value = String(date);
+
+  if (fromDate && value < fromDate) return false;
+  if (toDate && value > toDate) return false;
+
+  return true;
+}
+
+function getReportDateRange() {
+  return {
+    fromDate: $("#reportFromDate")?.value || "",
+    toDate: $("#reportToDate")?.value || ""
+  };
+}
+
+function generateOverviewReport(output) {
+  output.innerHTML = "<p>Loading school overview...</p>";
+
+  return Promise.all([
+    getRecords("students"),
+    getRecords("teachers"),
+    getRecords("classes"),
+    getRecords("attendance"),
+    getRecords("exams"),
+    getRecords("results"),
+    getRecords("performance")
+  ]).then(([students, teachers, classes, attendance, exams, results, performance]) => {
+    output.innerHTML = `
+      <h2 style="text-align:center;">SCHOOL OVERVIEW REPORT</h2>
+      <p><strong>Generated:</strong> ${escapeHTML(getLocalDate())}</p>
+
+      <table>
+        <thead>
+          <tr><th>Category</th><th>Total Records</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Students</td><td>${students.length}</td></tr>
+          <tr><td>Teachers</td><td>${teachers.length}</td></tr>
+          <tr><td>Classes</td><td>${classes.length}</td></tr>
+          <tr><td>Attendance Records</td><td>${attendance.length}</td></tr>
+          <tr><td>Examinations</td><td>${exams.length}</td></tr>
+          <tr><td>Student Results</td><td>${results.length}</td></tr>
+          <tr><td>Teacher Evaluations</td><td>${performance.length}</td></tr>
+        </tbody>
+      </table>
+    `;
+  });
+}
+
+async function generateAttendanceReport(output, fromDate, toDate) {
+  const records = await getRecords("attendance");
+
+  const filtered = records.filter(record =>
+    reportDateMatches(record.date, fromDate, toDate)
+  );
+
+  const count = status =>
+    filtered.filter(record => record.status === status).length;
+
+  const students = filtered.filter(record => record.personType === "students");
+  const teachers = filtered.filter(record => record.personType === "teachers");
+
+  const rows = filtered
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .map(record => `
+      <tr>
+        <td>${escapeHTML(record.date || "")}</td>
+        <td>${escapeHTML(record.name || "")}</td>
+        <td>${escapeHTML(record.code || "")}</td>
+        <td>${record.personType === "teachers" ? "Teacher" : "Student"}</td>
+        <td>${escapeHTML(record.status || "")}</td>
+      </tr>
+    `).join("");
+
+  output.innerHTML = `
+    <h2 style="text-align:center;">ATTENDANCE REPORT</h2>
+    <p><strong>Period:</strong> ${escapeHTML(fromDate || "All dates")} to ${escapeHTML(toDate || "All dates")}</p>
+
+    <h3>Attendance Summary</h3>
+    <table>
+      <tbody>
+        <tr><th>Total Records</th><td>${filtered.length}</td></tr>
+        <tr><th>Present</th><td>${count("Present")}</td></tr>
+        <tr><th>Absent</th><td>${count("Absent")}</td></tr>
+        <tr><th>Late</th><td>${count("Late")}</td></tr>
+        <tr><th>Student Records</th><td>${students.length}</td></tr>
+        <tr><th>Teacher Records</th><td>${teachers.length}</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Attendance Details</h3>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Name</th><th>ID</th><th>Type</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || `<tr><td colspan="5">No attendance records found.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function generateResultsReport(output, fromDate, toDate) {
+  const results = await getRecords("results");
+
+  const filtered = results.filter(result =>
+    reportDateMatches(result.examDate, fromDate, toDate)
+  );
+
+  const rows = filtered
+    .sort((a, b) => String(a.examName || "").localeCompare(String(b.examName || "")))
+    .map(result => `
+      <tr>
+        <td>${escapeHTML(result.examName || "")}</td>
+        <td>${escapeHTML(result.className || "")}</td>
+        <td>${escapeHTML(result.subject || "")}</td>
+        <td>${escapeHTML(result.studentName || "")}</td>
+        <td>${escapeHTML(result.studentCode || "")}</td>
+        <td>${escapeHTML(result.marks ?? "")}</td>
+        <td>${escapeHTML(result.totalMarks ?? "")}</td>
+        <td>${Number(result.percentage || 0).toFixed(2)}%</td>
+        <td>${escapeHTML(result.grade || "")}</td>
+      </tr>
+    `).join("");
+
+  const average = filtered.length
+    ? filtered.reduce((sum, item) => sum + Number(item.percentage || 0), 0) / filtered.length
+    : 0;
+
+  output.innerHTML = `
+    <h2 style="text-align:center;">EXAMINATION RESULTS REPORT</h2>
+    <p><strong>Period:</strong> ${escapeHTML(fromDate || "All dates")} to ${escapeHTML(toDate || "All dates")}</p>
+
+    <p><strong>Total Student Results:</strong> ${filtered.length}</p>
+    <p><strong>Average Percentage:</strong> ${average.toFixed(2)}%</p>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Exam</th><th>Class</th><th>Subject</th>
+            <th>Student</th><th>Student ID</th>
+            <th>Mark</th><th>Total</th><th>Percentage</th><th>Grade</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || `<tr><td colspan="9">No examination results found.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function generatePerformanceReport(output, fromDate, toDate) {
+  const records = await getRecords("performance");
+
+  const filtered = records.filter(record =>
+    reportDateMatches(record.date, fromDate, toDate)
+  );
+
+  const rows = filtered
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .map(record => `
+      <tr>
+        <td>${escapeHTML(record.teacherName || "")}</td>
+        <td>${escapeHTML(record.teacherCode || "")}</td>
+        <td>${escapeHTML(record.department || "")}</td>
+        <td>${escapeHTML(record.date || "")}</td>
+        <td>${escapeHTML(record.totalScore ?? "")}/${escapeHTML(record.maximumScore ?? "")}</td>
+        <td>${Number(record.percentage || 0).toFixed(1)}%</td>
+        <td>${escapeHTML(record.overallRating || "")}</td>
+      </tr>
+    `).join("");
+
+  const average = filtered.length
+    ? filtered.reduce((sum, item) => sum + Number(item.percentage || 0), 0) / filtered.length
+    : 0;
+
+  output.innerHTML = `
+    <h2 style="text-align:center;">TEACHER PERFORMANCE REPORT</h2>
+    <p><strong>Period:</strong> ${escapeHTML(fromDate || "All dates")} to ${escapeHTML(toDate || "All dates")}</p>
+
+    <p><strong>Total Evaluations:</strong> ${filtered.length}</p>
+    <p><strong>Average Performance:</strong> ${average.toFixed(2)}%</p>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Teacher</th><th>Teacher ID</th><th>Department</th>
+            <th>Date</th><th>Score</th><th>Percentage</th><th>Rating</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || `<tr><td colspan="7">No teacher evaluations found.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function generateReport() {
+  const output = $("#reportOutput");
+  const message = $("#reportMessage");
+  const type = $("#reportType")?.value;
+
+  if (!output || !type) return;
+
+  const { fromDate, toDate } = getReportDateRange();
+
+  if (fromDate && toDate && fromDate > toDate) {
+    message.textContent = "From Date cannot be later than To Date.";
+    return;
+  }
+
+  output.innerHTML = "<p>Generating report...</p>";
+  message.textContent = "";
+
+  try {
+    if (type === "overview") {
+      await generateOverviewReport(output);
+    } else if (type === "attendance") {
+      await generateAttendanceReport(output, fromDate, toDate);
+    } else if (type === "results") {
+      await generateResultsReport(output, fromDate, toDate);
+    } else if (type === "performance") {
+      await generatePerformanceReport(output, fromDate, toDate);
+    }
+
+    message.textContent = "Report generated successfully.";
+
+  } catch (error) {
+    console.error("Report error:", error);
+    output.innerHTML = "<p>Unable to generate report.</p>";
+    message.textContent = "Error: " + error.message;
+  }
+}
+
+function printReport() {
+  const output = $("#reportOutput");
+
+  if (!output || !output.innerHTML.trim()) {
+    alert("Please generate a report first.");
+    return;
+  }
+
+  const printWindow = window.open("", "_blank");
+
+  if (!printWindow) {
+    alert("Popup blocked. Please allow popups and try again.");
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>School Report</title>
+      <style>
+        @page { size: A4 landscape; margin: 15mm; }
+        body { font-family: Arial, sans-serif; color: #111; font-size: 12px; }
+        h2 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #333; padding: 7px; text-align: left; }
+        th { background: #eee; }
+        p { line-height: 1.5; }
+        @media screen {
+          body { max-width: 1100px; margin: 20px auto; padding: 20px; }
+          button { padding: 10px 20px; margin-bottom: 15px; }
+        }
+        @media print {
+          button { display: none; }
+          tr { page-break-inside: avoid; }
+        }
+      </style>
+    </head>
+    <body>
+      <button onclick="window.print()">PRINT REPORT</button>
+      ${output.innerHTML}
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+}
+
+
+
+
+
+
 /* GLOBAL FUNCTIONS */
 
 window.showPage = showPage;
@@ -1690,6 +2051,10 @@ window.editResult = editResult;
 window.cancelResultEdit = cancelResultEdit;
 window.removeExam = removeExam;
 window.loadResults = loadResults;
+
+window.changeReportType = changeReportType;
+window.generateReport = generateReport;
+window.printReport = printReport;
 
 /* AUTHENTICATION */
 
