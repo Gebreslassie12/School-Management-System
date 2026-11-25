@@ -1,4 +1,5 @@
 
+
 import {
   collection,
   addDoc,
@@ -18,6 +19,7 @@ const allowedCollections = [
   "teachers",
   "classes",
   "attendance",
+  "exams",
   "results",
   "performance"
 ];
@@ -92,3 +94,4 @@ export async function findRecords(name, field, value) {
     ...item.data()
   }));
 }
+
