@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,11 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0b1f3a">
   <meta name="description" content="School Management System by Gebreslassie">
+
   <title>School Management System</title>
 
   <link rel="stylesheet" href="./style.css">
   <link rel="manifest" href="./manifest.json">
 </head>
+
 <body>
 
   <header>
@@ -18,27 +21,69 @@
   </header>
 
   <nav>
-    <button class="active" onclick="showPage('dashboard', this)">Dashboard</button>
-    <button onclick="showPage('students', this)">Students</button>
-    <button onclick="showPage('teachers', this)">Teachers</button>
-    <button onclick="showPage('performance', this)">Teacher Performance</button>
-    <button onclick="showPage('classes', this)">Classes & Subjects</button>
-    <button onclick="showPage('attendance', this)">Attendance</button>
-    <button onclick="showPage('results', this)">Exams & Results</button>
-    <button onclick="showPage('reports', this)">Reports</button>
+    <button type="button" class="active"
+      onclick="showPage('dashboard', this)">
+      Dashboard
+    </button>
+
+    <button type="button"
+      onclick="showPage('students', this)">
+      Students
+    </button>
+
+    <button type="button"
+      onclick="showPage('teachers', this)">
+      Teachers
+    </button>
+
+    <button type="button"
+      onclick="showPage('performance', this)">
+      Teacher Performance
+    </button>
+
+    <button type="button"
+      onclick="showPage('classes', this)">
+      Classes & Subjects
+    </button>
+
+    <button type="button"
+      onclick="showPage('attendance', this)">
+      Attendance
+    </button>
+
+    <button type="button"
+      onclick="showPage('results', this)">
+      Exams & Results
+    </button>
+
+    <button type="button"
+      onclick="showPage('reports', this)">
+      Reports
+    </button>
   </nav>
 
-  <main id="content"></main>
+  <main id="content">
+    <p>Loading School Management System...</p>
+  </main>
 
-  <footer>School Management System · By Gebreslassie</footer>
+  <footer>
+    School Management System · By Gebreslassie
+  </footer>
 
+  <!-- Main Application -->
   <script type="module" src="./app.js"></script>
 
+  <!-- PWA Service Worker -->
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("./sw.js")
-          .catch(error => console.log("Service worker:", error));
+          .then(() => {
+            console.log("Service Worker registered successfully.");
+          })
+          .catch(error => {
+            console.error("Service Worker error:", error);
+          });
       });
     }
   </script>
