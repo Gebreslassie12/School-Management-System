@@ -3244,3 +3244,22 @@ onAuthStateChanged(auth, user => {
   const firstButton = document.querySelector("nav button");
   showPage("dashboard", firstButton);
 });
+
+
+
+
+
+
+
+
+onAuthStateChanged(auth, user => {
+  if (!user) {
+    window.location.href = "./login.html";
+    return;
+  }
+
+  currentUser = user;
+
+  const firstButton = document.querySelector("nav button");
+  showPage("dashboard", firstButton);
+});
