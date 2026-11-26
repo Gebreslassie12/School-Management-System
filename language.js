@@ -1,32 +1,37 @@
-
 const translations = {
   "School Management System": "ምምሕዳር ስርዓት ቤት ትምህርቲ",
+  "School Management System · By Gebreslassie": "ምምሕዳር ስርዓት ቤት ትምህርቲ · ብገብረስላሴ",
   "By Gebreslassie": "ብገብረስላሴ",
   "Language / ቋንቋ:": "ቋንቋ:",
+
   "Dashboard": "ዳሽቦርድ",
-  "Students": " ተምሃሮ",
+  "Students": "ተምሃሮ",
   "Teachers": "መምህራን",
   "Teacher Performance": "ውፅኢት ስራሕ መምህራን",
   "Classes & Subjects": "ክፍልታትን ዓይነታት ትምህርትን",
-  "Attendance": "ምምዝጋብ ህላወ",
+  "Attendance": "ህላወ",
   "Exams & Results": "ፈተናታትን ውፅኢታትን",
   "Reports": "ፀብፃባት",
+
   "Welcome": "እንቋዕ ደሓን መፃእኹም",
   "Welcome to School Management System.": "እንቋዕ ናብ ምምሕዳር ስርዓት ቤት ትምህርቲ ደሓን መፃእኹም።",
+
   "Student Management": "ምምሕዳር ተምሃሮ",
   "Register Student": "ተምሃራይ መዝግብ",
   "Student full name": "ምሉእ ስም ተምሃራይ",
   "Student ID": "መለለዪ ተምሃራይ",
   "Add Student": "ተምሃራይ ወስኽ",
+
   "Teacher Management": "ምምሕዳር መምህራን",
   "Register Teacher": "መምህር መዝግብ",
   "Teacher full name": "ምሉእ ስም መምህር",
   "Teacher ID": "መለለዪ መምህር",
   "Add Teacher": "መምህር ወስኽ",
-  "Classes & Subjects": "ክፍልታትን ዓይነታት ትምህርትን",
+
   "Class Management": "ምምሕዳር ክፍልታት",
   "Class name (e.g. Grade 9A)": "ስም ክፍሊ (ንኣብነት ክፍሊ 9ይ ሀ)",
   "Add Class": "ክፍሊ ወስኽ",
+
   "Teacher Performance Evaluation": "ገምጋም ውፅኢት ስራሕ መምህር",
   "Teacher Information": "ሓበሬታ መምህር",
   "Select Teacher": "መምህር ምረፅ",
@@ -53,7 +58,7 @@ const translations = {
   "Evaluator Information": "ሓበሬታ ገምጋሚ",
   "Save Evaluation": "ገምጋም ዓቅብ",
   "Saved Teacher Evaluations": "ዝተዓቀቡ ገምጋማት መምህራን",
-  "Attendance": "ህላወ",
+
   "Record Attendance": "ህላወ መዝግብ",
   "Attendance for": "ህላወ ናይ",
   "Name": "ስም",
@@ -63,6 +68,7 @@ const translations = {
   "Absent": "ዘብኮረ/ት",
   "Late": "ዝደንጎየ",
   "Save Attendance": "ህላወ ዓቅብ",
+
   "Create New Exam": "ሓድሽ ፈተና ፍጠር",
   "Exam Name": "ስም ፈተና",
   "Class": "ክፍሊ",
@@ -80,18 +86,20 @@ const translations = {
   "Student Results": "ውፅኢት ተምሃሮ",
   "Filter by Examination": "ብፈተና ምፍላይ",
   "All examinations": "ኩሎም ፈተናታት",
+
   "School Reports": "ፀብፃባት ቤት ትምህርቲ",
   "Generate School Report": "ፀብፃብ ቤት ትምህርቲ ኣዳሉ",
   "Report Type": "ዓይነት ፀብፃብ",
   "School Overview": "ሓፈሻዊ ርእይቶ ቤት ትምህርቲ",
   "Attendance Report": "ፀብፃብ ህላወ",
   "Examination Results": "ውፅኢት ፈተና",
-  "Teacher Performance": "ውፅኢት ስራሕ መምህራን",
   "From Date": "ካብ ዕለት",
   "To Date": "ክሳብ ዕለት",
   "Generate Report": "ፀብፃብ ኣዳሉ",
   "Print Report": "ፀብፃብ ኣሕትም",
+
   "Loading...": "ይፅዕን ኣሎ...",
+  "Loading School Management System...": "ምምሕዳር ስርዓት ቤት ትምህርቲ ይፅዕን ኣሎ...",
   "Loading teachers...": "መምህራን ይፅዕን ኣሎ...",
   "No teachers found. Register first.": "መምህራን ኣይተረኸቡን። ነቐደም መዝግብ።",
   "No records found.": "ዝተመዝገበ መረዳእታ ኣይተረኸበን።",
@@ -118,7 +126,10 @@ const translations = {
 
   function translateTextNode(node) {
     const parent = node.parentElement;
-    if (!parent || ["SCRIPT", "STYLE", "NOSCRIPT"].includes(parent.tagName)) return;
+
+    if (!parent || ["SCRIPT", "STYLE", "NOSCRIPT"].includes(parent.tagName)) {
+      return;
+    }
 
     if (!originalText.has(node)) {
       originalText.set(node, node.nodeValue);
@@ -126,6 +137,7 @@ const translations = {
 
     const original = originalText.get(node);
     const trimmed = original.trim();
+
     if (!trimmed) return;
 
     const translated = currentLanguage === "ti"
@@ -152,25 +164,28 @@ const translations = {
     if (element.nodeType !== Node.ELEMENT_NODE) return;
 
     ["placeholder", "title"].forEach(attribute => {
-      if (element.hasAttribute(attribute)) {
-        if (!originalAttributes.has(element)) {
-          originalAttributes.set(element, {});
-        }
+      if (!element.hasAttribute(attribute)) return;
 
-        const saved = originalAttributes.get(element);
-        if (saved[attribute] === undefined) {
-          saved[attribute] = element.getAttribute(attribute);
-        }
+      if (!originalAttributes.has(element)) {
+        originalAttributes.set(element, {});
+      }
 
-        const original = saved[attribute];
-        const translated = currentLanguage === "ti"
-          ? translations[original]
-          : original;
+      const saved = originalAttributes.get(element);
 
-        if (translated !== undefined &&
-            element.getAttribute(attribute) !== translated) {
-          element.setAttribute(attribute, translated);
-        }
+      if (saved[attribute] === undefined) {
+        saved[attribute] = element.getAttribute(attribute);
+      }
+
+      const original = saved[attribute];
+      const translated = currentLanguage === "ti"
+        ? translations[original]
+        : original;
+
+      if (
+        translated !== undefined &&
+        element.getAttribute(attribute) !== translated
+      ) {
+        element.setAttribute(attribute, translated);
       }
     });
 
@@ -180,7 +195,6 @@ const translations = {
   function applyLanguage() {
     document.documentElement.lang = currentLanguage === "ti" ? "ti" : "en";
     languageSelect.value = currentLanguage;
-
     translateElement(document.body);
   }
 
