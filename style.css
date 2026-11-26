@@ -176,3 +176,20 @@ table {
   width: 100%;
   overflow-x: auto;
 }
+
+
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+nav a,
+nav button {
+  display: inline-block;
+  padding: 10px 14px;
+  margin: 3px;
+  text-decoration: none;
+}
