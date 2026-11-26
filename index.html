@@ -5,12 +5,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <meta name="theme-color" content="#0b1f3a">
   <meta name="description" content="School Management System by Gebreslassie">
 
   <title>School Management System</title>
 
+  <!-- CSS -->
   <link rel="stylesheet" href="./style.css">
+
+  <!-- PWA -->
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icons/icon-192.png" type="image/png">
 
@@ -24,12 +28,15 @@
 
 <body>
 
+  <!-- HEADER -->
   <header>
     <h1>School Management System</h1>
     <p>By Gebreslassie</p>
 
+    <!-- LANGUAGE SELECTOR -->
     <div style="margin: 12px;">
       <label for="languageSelect">Language / ቋንቋ:</label>
+
       <select id="languageSelect">
         <option value="en">English</option>
         <option value="ti">ትግርኛ</option>
@@ -37,52 +44,81 @@
     </div>
   </header>
 
+  <!-- NAVIGATION -->
   <nav>
     <button type="button" class="active"
-      onclick="showPage('dashboard', this)">Dashboard</button>
+      onclick="showPage('dashboard', this)">
+      Dashboard
+    </button>
 
     <button type="button"
-      onclick="showPage('students', this)">Students</button>
+      onclick="showPage('students', this)">
+      Students
+    </button>
 
     <button type="button"
-      onclick="showPage('teachers', this)">Teachers</button>
+      onclick="showPage('teachers', this)">
+      Teachers
+    </button>
 
     <button type="button"
-      onclick="showPage('performance', this)">Teacher Performance</button>
+      onclick="showPage('performance', this)">
+      Teacher Performance
+    </button>
 
     <button type="button"
-      onclick="showPage('classes', this)">Classes & Subjects</button>
+      onclick="showPage('classes', this)">
+      Classes & Subjects
+    </button>
 
     <button type="button"
-      onclick="showPage('attendance', this)">Attendance</button>
+      onclick="showPage('attendance', this)">
+      Attendance
+    </button>
 
     <button type="button"
-      onclick="showPage('results', this)">Exams & Results</button>
+      onclick="showPage('results', this)">
+      Exams & Results
+    </button>
 
     <button type="button"
-      onclick="showPage('reports', this)">Reports</button>
+      onclick="showPage('reports', this)">
+      Reports
+    </button>
   </nav>
 
+  <!-- MAIN CONTENT -->
   <main id="content">
     <p>Loading School Management System...</p>
   </main>
 
+  <!-- FOOTER -->
   <footer>
     School Management System · By Gebreslassie
   </footer>
 
+  <!-- LANGUAGE TRANSLATION -->
   <script src="./language.js"></script>
+
+  <!-- MAIN APPLICATION -->
   <script type="module" src="./app.js"></script>
 
+  <!-- SERVICE WORKER -->
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("./sw.js")
           .then((registration) => {
-            console.log("Service Worker registered successfully:", registration.scope);
+            console.log(
+              "Service Worker registered successfully:",
+              registration.scope
+            );
           })
           .catch((error) => {
-            console.error("Service Worker registration failed:", error);
+            console.error(
+              "Service Worker registration failed:",
+              error
+            );
           });
       });
     }
