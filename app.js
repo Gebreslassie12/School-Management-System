@@ -2069,3 +2069,1179 @@ onAuthStateChanged(auth, user => {
   const firstButton = document.querySelector("nav button");
   showPage("dashboard", firstButton);
 });
+
+
+/* PRINT TEACHER PERFORMANCE EVALUATION */
+
+async function printPerformance(id) {
+  const printWindow = window.open("", "_blank");
+
+  if (!printWindow) {
+    alert("Popup blocked! Please allow popups for this website and try again.");
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write("<h2 style='font-family:Arial;text-align:center'>Preparing Teacher Evaluation...</h2>");
+  printWindow.document.close();
+
+  try {
+    const records = await getRecords("performance");
+    const record = records.find(item => String(item.id) === String(id));
+
+    if (!record) {
+      printWindow.close();
+      alert("Evaluation not found.");
+      return;
+    }
+
+    const areaRows = (record.areas || []).map((area, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeHTML(area.name)}</td>
+        <td>${escapeHTML(area.rating)}</td>
+        <td>${escapeHTML(area.score)}</td>
+      </tr>
+    `).join("");
+
+    const commentSection = (title, comment, name, signature, date) => `
+      <div class="approval">
+        <h3>${title}</h3>
+        <p><strong>Comment:</strong> ${escapeHTML(comment || "")}</p>
+        <p><strong>Name:</strong> ${escapeHTML(name || "")}</p>
+        <p><strong>Signature:</strong> ${escapeHTML(signature || "")}</p>
+        <p><strong>Date:</strong> ${escapeHTML(date || "")}</p>
+      </div>
+    `;
+
+    const report = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Teacher Performance Evaluation</title>
+        <style>
+          @page { size: A4; margin: 15mm; }
+          body { font-family: Arial, sans-serif; color: #111; font-size: 12px; line-height: 1.5; }
+          h1, h2 { text-align: center; }
+          h1 { font-size: 20px; }
+          h2 { font-size: 16px; }
+          .subtitle { text-align: center; margin-bottom: 20px; }
+          .info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+          table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+          th, td { border: 1px solid #333; padding: 7px; text-align: left; }
+          th { background: #eee; }
+          .summary, .approval { border: 1px solid #333; padding: 10px; margin: 12px 0; }
+          .approval { min-height: 100px; page-break-inside: avoid; }
+          .approval h3 { text-align: left; margin-top: 0; }
+          .footer { text-align: center; margin-top: 20px; font-size: 10px; }
+          @media screen {
+            body { max-width: 850px; margin: 20px auto; padding: 20px; }
+            .print-button { display: block; margin: 20px auto; padding: 12px 25px; background: #0b1f3a; color: white; border: 0; border-radius: 5px; font-size: 16px; }
+          }
+          @media print { .print-button { display: none; } }
+        </style>
+      </head>
+      <body>
+        <button class="print-button" onclick="window.print()">PRINT EVALUATION</button>
+        <h1>TEACHER PERFORMANCE EVALUATION</h1>
+        <div class="subtitle">School Management System</div>
+
+        <div class="info">
+          <div><strong>Teacher:</strong> ${escapeHTML(record.teacherName || "")}</div>
+          <div><strong>Teacher ID:</strong> ${escapeHTML(record.teacherCode || "")}</div>
+          <div><strong>Department:</strong> ${escapeHTML(record.department || "")}</div>
+          <div><strong>Evaluation Date:</strong> ${escapeHTML(record.date || "")}</div>
+          <div><strong>Academic Year:</strong> ${escapeHTML(record.academicYear || "")}</div>
+          <div><strong>Evaluator:</strong> ${escapeHTML(record.evaluatorName || "")}</div>
+          <div><strong>Evaluator Position:</strong> ${escapeHTML(record.evaluatorPosition || "")}</div>
+        </div>
+
+        <h2>PERFORMANCE EVALUATION CRITERIA</h2>
+        <table>
+          <thead><tr><th>No.</th><th>Performance Area</th><th>Rating</th><th>Score</th></tr></thead>
+          <tbody>${areaRows}</tbody>
+        </table>
+
+        <div class="summary">
+          <h3>OVERALL PERFORMANCE RESULT</h3>
+          <p>Total Score: ${escapeHTML(record.totalScore)} / ${escapeHTML(record.maximumScore)}</p>
+          <p>Average: ${escapeHTML(record.average)}</p>
+          <p>Percentage: ${escapeHTML(record.percentage)}%</p>
+          <p><strong>Overall Rating: ${escapeHTML(record.overallRating)}</strong></p>
+        </div>
+
+        <h3>TEACHER'S STRENGTHS</h3>
+        <p>${escapeHTML(record.strengths || "")}</p>
+        <h3>AREAS FOR IMPROVEMENT</h3>
+        <p>${escapeHTML(record.improvements || "")}</p>
+        <h3>RECOMMENDATIONS</h3>
+        <p>${escapeHTML(record.recommendations || "")}</p>
+
+        ${commentSection("DEPARTMENT HEAD'S COMMENT AND SIGNATURE", record.departmentComment, record.departmentHeadName, record.departmentHeadSignature, record.departmentHeadDate)}
+        ${commentSection("DEPUTY PRINCIPAL'S COMMENT AND SIGNATURE", record.deputyComment, record.deputyName, record.deputySignature, record.deputyDate)}
+        ${commentSection("PRINCIPAL'S COMMENT AND SIGNATURE", record.principalComment, record.principalName, record.principalSignature, record.principalDate)}
+        ${commentSection("TEACHER'S ACKNOWLEDGEMENT AND SIGNATURE", record.teacherComment, record.teacherName, record.teacherSignature, record.teacherSignatureDate)}
+
+        <div class="approval">
+          <h3>EVALUATOR</h3>
+          <p>Name: ${escapeHTML(record.evaluatorName || "")}</p>
+          <p>Position: ${escapeHTML(record.evaluatorPosition || "")}</p>
+        </div>
+
+        <div class="footer">Teacher Performance Evaluation Report</div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(report);
+    printWindow.document.close();
+    printWindow.focus();
+
+  } catch (error) {
+    console.error("Print error:", error);
+    if (!printWindow.closed) {
+      printWindow.document.body.innerHTML = `<h2>Unable to prepare evaluation</h2><p>${escapeHTML(error.message)}</p>`;
+    }
+    alert("Unable to print evaluation: " + error.message);
+  }
+}
+
+/* ATTENDANCE */
+
+async function loadAttendanceNames() {
+  const type = $("#attendanceType")?.value;
+  const select = $("#attendancePerson");
+
+  if (!type || !select) return;
+
+  select.innerHTML = `<option value="">Loading...</option>`;
+
+  try {
+    const people = await getRecords(type);
+
+    if (!people.length) {
+      select.innerHTML = `<option value="">No names found. Register first.</option>`;
+      return;
+    }
+
+    select.innerHTML = `
+      <option value="">Select a name</option>
+      ${people.map(person => `
+        <option value="${escapeHTML(person.id)}"
+          data-name="${escapeHTML(person.name)}"
+          data-code="${escapeHTML(person.code || "")}">
+          ${escapeHTML(person.name)}
+          ${person.code ? " — " + escapeHTML(person.code) : ""}
+        </option>
+      `).join("")}
+    `;
+
+  } catch (error) {
+    console.error(error);
+    select.innerHTML = `<option value="">Could not load names.</option>`;
+  }
+}
+
+async function saveAttendance() {
+  if (attendanceSaving) return;
+
+  const type = $("#attendanceType").value;
+  const personSelect = $("#attendancePerson");
+  const selectedOption = personSelect.options[personSelect.selectedIndex];
+
+  const personId = personSelect.value;
+  const personName = selectedOption?.dataset.name || "";
+  const personCode = selectedOption?.dataset.code || "";
+  const date = $("#attendanceDate").value;
+  const status = $("#attendanceStatus").value;
+
+  const message = $("#attendanceMessage");
+  const button = $("#saveAttendanceButton");
+
+  if (!personId) {
+    message.textContent = "Please select a student or teacher.";
+    return;
+  }
+
+  if (!date) {
+    message.textContent = "Please select a date.";
+    return;
+  }
+
+  attendanceSaving = true;
+  button.disabled = true;
+  button.textContent = "Saving...";
+
+  try {
+    await addRecord("attendance", {
+      personId,
+      name: personName,
+      code: personCode,
+      personType: type,
+      date,
+      status
+    });
+
+    message.textContent = "Attendance saved successfully!";
+    await loadAttendanceRecords();
+
+  } catch (error) {
+    console.error(error);
+    message.textContent = "Error: " + error.message;
+
+  } finally {
+    attendanceSaving = false;
+    button.disabled = false;
+    button.textContent = "Save Attendance";
+  }
+}
+
+async function loadAttendanceRecords() {
+  const element = $("#attendanceList");
+  if (!element) return;
+
+  element.textContent = "Loading attendance...";
+
+  try {
+    const records = await getRecords("attendance");
+
+    if (!records.length) {
+      element.innerHTML = "<p>No attendance records found.</p>";
+      return;
+    }
+
+    records.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+    element.innerHTML = `
+      <h3>Attendance Records</h3>
+      ${records.map(record => `
+        <div class="panel">
+          <strong>${escapeHTML(record.name)}</strong>
+          <p>${escapeHTML(record.personType === "teachers" ? "Teacher" : "Student")}
+            ${record.code ? " — " + escapeHTML(record.code) : ""}
+          </p>
+          <p>Date: ${escapeHTML(record.date)}</p>
+          <p>Status: ${escapeHTML(record.status)}</p>
+          <button onclick="removeRecord('${escapeHTML(record.id)}','attendance')">Delete</button>
+        </div>
+      `).join("")}
+    `;
+
+  } catch (error) {
+    console.error(error);
+    element.textContent = "Unable to load attendance records.";
+  }
+}
+
+/* EXAMS & RESULTS */
+
+/* Load registered classes into the exam form */
+async function loadExamClasses() {
+  const select = $("#examClass");
+  if (!select) return;
+
+  try {
+    const classes = await getRecords("classes");
+
+    select.innerHTML = `
+      <option value="">Select Class</option>
+      ${classes.map(item => `
+        <option value="${escapeHTML(item.name)}">${escapeHTML(item.name)}</option>
+      `).join("")}
+    `;
+
+    if (!classes.length) {
+      select.innerHTML = `<option value="">No classes found. Register a class first.</option>`;
+    }
+
+  } catch (error) {
+    console.error(error);
+    select.innerHTML = `<option value="">Unable to load classes</option>`;
+  }
+}
+
+/* Create and save an examination */
+async function saveExam() {
+  if (examSaving) return;
+
+  const name = $("#examName").value.trim();
+  const className = $("#examClass").value;
+  const subject = $("#examSubject").value.trim();
+  const date = $("#examDate").value;
+  const totalMarks = Number($("#examTotalMarks").value);
+
+  const message = $("#examMessage");
+  const button = $("#saveExamButton");
+
+  if (!name || !className || !subject || !date || !$("#examTotalMarks").value) {
+    message.textContent = "Please complete all examination fields.";
+    return;
+  }
+
+  if (!Number.isFinite(totalMarks) || totalMarks <= 0) {
+    message.textContent = "Total marks must be greater than zero.";
+    return;
+  }
+
+  examSaving = true;
+  button.disabled = true;
+  button.textContent = "Saving...";
+
+  try {
+    await addRecord("exams", {
+      name,
+      className,
+      subject,
+      date,
+      totalMarks
+    });
+
+    message.textContent = "Examination created successfully!";
+
+    $("#examName").value = "";
+    $("#examClass").value = "";
+    $("#examSubject").value = "";
+    $("#examDate").value = getLocalDate();
+    $("#examTotalMarks").value = "";
+
+    await loadExams();
+    await loadExamOptions();
+
+  } catch (error) {
+    console.error(error);
+    message.textContent = "Error: " + error.message;
+
+  } finally {
+    examSaving = false;
+    button.disabled = false;
+    button.textContent = "Create Exam";
+  }
+}
+
+/* Display saved examinations */
+async function loadExams() {
+  const element = $("#examList");
+  if (!element) return;
+
+  element.textContent = "Loading exams...";
+
+  try {
+    const exams = await getRecords("exams");
+
+    if (!exams.length) {
+      element.innerHTML = "<p>No examinations created yet.</p>";
+      return;
+    }
+
+    exams.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+    element.innerHTML = exams.map(exam => `
+      <div class="panel">
+        <h3>${escapeHTML(exam.name)}</h3>
+        <p><strong>Class:</strong> ${escapeHTML(exam.className)}</p>
+        <p><strong>Subject:</strong> ${escapeHTML(exam.subject)}</p>
+        <p><strong>Date:</strong> ${escapeHTML(exam.date)}</p>
+        <p><strong>Total Marks:</strong> ${escapeHTML(exam.totalMarks)}</p>
+        <button onclick="selectExamForResults('${escapeHTML(exam.id)}')">
+          Enter Results
+        </button>
+        <button onclick="removeExam('${escapeHTML(exam.id)}')">
+          Delete Exam
+        </button>
+      </div>
+    `).join("");
+
+  } catch (error) {
+    console.error(error);
+    element.textContent = "Unable to load examinations.";
+  }
+}
+
+/* Load exams into result selectors */
+async function loadExamOptions() {
+  const resultSelect = $("#resultExam");
+  const filterSelect = $("#filterResultsExam");
+
+  if (!resultSelect || !filterSelect) return;
+
+  try {
+    const exams = await getRecords("exams");
+
+    const options = exams.map(exam => `
+      <option value="${escapeHTML(exam.id)}">
+        ${escapeHTML(exam.name)} - ${escapeHTML(exam.className)} - ${escapeHTML(exam.subject)}
+      </option>
+    `).join("");
+
+    resultSelect.innerHTML = `<option value="">Select an examination</option>${options}`;
+    filterSelect.innerHTML = `<option value="">All examinations</option>${options}`;
+
+  } catch (error) {
+    console.error(error);
+    resultSelect.innerHTML = `<option value="">Unable to load examinations</option>`;
+  }
+}
+
+/* Select an exam from the saved exam list */
+async function selectExamForResults(examId) {
+  const select = $("#resultExam");
+  if (!select) return;
+
+  select.value = examId;
+  await loadExamDetails();
+
+  $("#resultMarks").focus();
+  $("#resultStudent").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+/* Load exam details and student names */
+async function loadExamDetails() {
+  const examId = $("#resultExam")?.value;
+  const info = $("#selectedExamInfo");
+  const studentSelect = $("#resultStudent");
+
+  if (!examId || !info || !studentSelect) {
+    if (info) info.innerHTML = "";
+    if (studentSelect) studentSelect.innerHTML = `<option value="">Select an examination first</option>`;
+    return;
+  }
+
+  try {
+    const [exams, students] = await Promise.all([
+      getRecords("exams"),
+      getRecords("students")
+    ]);
+
+    const exam = exams.find(item => String(item.id) === String(examId));
+
+    if (!exam) {
+      info.textContent = "Examination not found.";
+      return;
+    }
+
+    info.innerHTML = `
+      <div class="panel">
+        <p><strong>Exam:</strong> ${escapeHTML(exam.name)}</p>
+        <p><strong>Class:</strong> ${escapeHTML(exam.className)}</p>
+        <p><strong>Subject:</strong> ${escapeHTML(exam.subject)}</p>
+        <p><strong>Total Marks:</strong> ${escapeHTML(exam.totalMarks)}</p>
+      </div>
+    `;
+
+    if (!students.length) {
+      studentSelect.innerHTML = `<option value="">No students registered. Register students first.</option>`;
+      return;
+    }
+
+    studentSelect.innerHTML = `
+      <option value="">Select Student</option>
+      ${students.map(student => `
+        <option value="${escapeHTML(student.id)}"
+          data-name="${escapeHTML(student.name)}"
+          data-code="${escapeHTML(student.code || "")}">
+          ${escapeHTML(student.name)}
+          ${student.code ? " — " + escapeHTML(student.code) : ""}
+        </option>
+      `).join("")}
+    `;
+
+  } catch (error) {
+    console.error(error);
+    info.textContent = "Unable to load examination details.";
+    studentSelect.innerHTML = `<option value="">Unable to load students</option>`;
+  }
+}
+
+/* Calculate student grade */
+function calculateGrade(percentage) {
+  if (percentage >= 90) return "A";
+  if (percentage >= 80) return "B";
+  if (percentage >= 70) return "C";
+  if (percentage >= 60) return "D";
+  if (percentage >= 50) return "E";
+  return "F";
+}
+
+/* Save or update one student's result */
+async function saveResult() {
+  if (resultSaving) return;
+
+  const examId = $("#resultExam").value;
+  const studentSelect = $("#resultStudent");
+  const studentOption = studentSelect.options[studentSelect.selectedIndex];
+
+  const studentId = studentSelect.value;
+  const studentName = studentOption?.dataset.name || "";
+  const studentCode = studentOption?.dataset.code || "";
+  const marksValue = $("#resultMarks").value;
+  const marks = Number(marksValue);
+
+  const message = $("#resultMessage");
+  const button = $("#saveResultButton");
+
+  if (!examId) {
+    message.textContent = "Please select an examination.";
+    return;
+  }
+
+  if (!studentId) {
+    message.textContent = "Please select a student.";
+    return;
+  }
+
+  if (marksValue === "" || !Number.isFinite(marks) || marks < 0) {
+    message.textContent = "Please enter valid marks.";
+    return;
+  }
+
+  resultSaving = true;
+  button.disabled = true;
+  button.textContent = editingResultId ? "Updating..." : "Saving...";
+
+  try {
+    const exams = await getRecords("exams");
+    const exam = exams.find(item => String(item.id) === String(examId));
+
+    if (!exam) {
+      throw new Error("Selected examination was not found.");
+    }
+
+    const totalMarks = Number(exam.totalMarks);
+
+    if (marks > totalMarks) {
+      message.textContent = `Marks cannot be greater than ${totalMarks}.`;
+      return;
+    }
+
+    const percentage = (marks / totalMarks) * 100;
+
+    const resultData = {
+      examId,
+      examName: exam.name,
+      className: exam.className,
+      subject: exam.subject,
+      examDate: exam.date,
+      totalMarks,
+      studentId,
+      studentName,
+      studentCode,
+      marks,
+      percentage: Number(percentage.toFixed(2)),
+      grade: calculateGrade(percentage)
+    };
+
+    if (editingResultId) {
+      await updateRecord("results", editingResultId, resultData);
+      editingResultId = null;
+      message.textContent = "Student result updated successfully!";
+    } else {
+      const existingResults = await getRecords("results");
+
+      const duplicate = existingResults.find(item =>
+        String(item.examId) === String(examId) &&
+        String(item.studentId) === String(studentId)
+      );
+
+      if (duplicate) {
+        message.textContent = "A result for this student and examination already exists. Use Edit to update it.";
+        return;
+      }
+
+      await addRecord("results", resultData);
+      message.textContent = "Student result saved successfully!";
+    }
+
+    $("#resultMarks").value = "";
+    $("#resultStudent").value = "";
+
+    $("#saveResultButton").textContent = "Save Result";
+    $("#cancelResultEdit").style.display = "none";
+
+    await loadResults();
+
+  } catch (error) {
+    console.error(error);
+    message.textContent = "Error: " + error.message;
+
+  } finally {
+    resultSaving = false;
+    button.disabled = false;
+    button.textContent = editingResultId ? "Update Result" : "Save Result";
+  }
+}
+
+/* Display results and calculate rank */
+async function loadResults() {
+  const element = $("#resultsList");
+  if (!element) return;
+
+  element.textContent = "Loading results...";
+
+  try {
+    const [results, exams] = await Promise.all([
+      getRecords("results"),
+      getRecords("exams")
+    ]);
+
+    const filterExamId = $("#filterResultsExam")?.value || "";
+
+    let filtered = filterExamId
+      ? results.filter(item => String(item.examId) === String(filterExamId))
+      : results;
+
+    if (!filtered.length) {
+      element.innerHTML = "<p>No student results found.</p>";
+      return;
+    }
+
+    filtered.sort((a, b) => {
+      const examCompare = String(a.examName || "").localeCompare(String(b.examName || ""));
+      if (examCompare !== 0) return examCompare;
+      return Number(b.percentage || 0) - Number(a.percentage || 0);
+    });
+
+    const grouped = {};
+
+    filtered.forEach(result => {
+      const key = result.examId || "unknown";
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(result);
+    });
+
+    element.innerHTML = Object.entries(grouped).map(([examId, group]) => {
+      group.sort((a, b) => Number(b.percentage || 0) - Number(a.percentage || 0));
+
+      let previousPercentage = null;
+      let currentRank = 0;
+
+      const rows = group.map((result, index) => {
+        const percentage = Number(result.percentage || 0);
+
+        if (previousPercentage === null || percentage !== previousPercentage) {
+          currentRank = index + 1;
+        }
+
+        previousPercentage = percentage;
+
+        return `
+          <tr>
+            <td>${currentRank}</td>
+            <td>${escapeHTML(result.studentName)}</td>
+            <td>${escapeHTML(result.studentCode || "")}</td>
+            <td>${escapeHTML(result.marks)}</td>
+            <td>${escapeHTML(result.totalMarks)}</td>
+            <td>${percentage.toFixed(2)}%</td>
+            <td><strong>${escapeHTML(result.grade)}</strong></td>
+            <td>
+              <button onclick="editResult('${escapeHTML(result.id)}')">Edit</button>
+              <button onclick="removeRecord('${escapeHTML(result.id)}','results')">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      const first = group[0];
+
+      return `
+        <div class="panel">
+          <h3>${escapeHTML(first.examName || "Examination")}</h3>
+          <p><strong>Class:</strong> ${escapeHTML(first.className || "")}</p>
+          <p><strong>Subject:</strong> ${escapeHTML(first.subject || "")}</p>
+          <p><strong>Date:</strong> ${escapeHTML(first.examDate || "")}</p>
+
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Student</th>
+                  <th>Student ID</th>
+                  <th>Mark</th>
+                  <th>Total</th>
+                  <th>Percentage</th>
+                  <th>Grade</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+
+          <p><strong>Number of students:</strong> ${group.length}</p>
+        </div>
+      `;
+    }).join("");
+
+  } catch (error) {
+    console.error(error);
+    element.textContent = "Unable to load student results.";
+  }
+}
+
+/* Edit saved result */
+async function editResult(id) {
+  try {
+    const results = await getRecords("results");
+    const record = results.find(item => String(item.id) === String(id));
+
+    if (!record) {
+      alert("Result not found.");
+      return;
+    }
+
+    editingResultId = id;
+
+    await loadExamOptions();
+
+    $("#resultExam").value = record.examId || "";
+    await loadExamDetails();
+
+    $("#resultStudent").value = record.studentId || "";
+    $("#resultMarks").value = record.marks ?? "";
+
+    $("#saveResultButton").textContent = "Update Result";
+    $("#cancelResultEdit").style.display = "inline-block";
+    $("#resultMessage").textContent = "Edit the marks and click Update Result.";
+
+    $("#resultExam").scrollIntoView({ behavior: "smooth", block: "center" });
+
+  } catch (error) {
+    console.error(error);
+    alert("Unable to edit result: " + error.message);
+  }
+}
+
+function cancelResultEdit() {
+  editingResultId = null;
+
+  if ($("#resultMarks")) $("#resultMarks").value = "";
+  if ($("#resultStudent")) $("#resultStudent").value = "";
+  if ($("#saveResultButton")) $("#saveResultButton").textContent = "Save Result";
+  if ($("#cancelResultEdit")) $("#cancelResultEdit").style.display = "none";
+  if ($("#resultMessage")) $("#resultMessage").textContent = "";
+}
+
+/* Delete an examination and its related results */
+async function removeExam(examId) {
+  const confirmed = confirm(
+    "Delete this examination and all its saved student results?"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const results = await getRecords("results");
+
+    const relatedResults = results.filter(
+      result => String(result.examId) === String(examId)
+    );
+
+    for (const result of relatedResults) {
+      await deleteRecord("results", result.id);
+    }
+
+    await deleteRecord("exams", examId);
+
+    alert("Examination and its results deleted successfully.");
+
+    await loadExams();
+    await loadExamOptions();
+    await loadResults();
+
+  } catch (error) {
+    console.error(error);
+    alert("Unable to delete examination: " + error.message);
+  }
+}
+
+/* DELETE RECORDS */
+
+async function removeRecord(id, collectionName) {
+  const confirmed = confirm("Are you sure you want to delete this record?");
+  if (!confirmed) return;
+
+  try {
+    await deleteRecord(collectionName, id);
+
+    if (collectionName === "students") await loadStudents();
+    if (collectionName === "teachers") await loadTeachers();
+    if (collectionName === "classes") await loadClasses();
+    if (collectionName === "attendance") await loadAttendanceRecords();
+    if (collectionName === "performance") await loadPerformanceRecords();
+    if (collectionName === "results") await loadResults();
+
+    await loadDashboard();
+
+  } catch (error) {
+    console.error(error);
+    alert("Unable to delete record: " + error.message);
+  }
+}
+
+
+
+/* REPORTS */
+
+function changeReportType() {
+  const type = $("#reportType")?.value;
+  const filters = $("#reportDateFilters");
+
+  if (!type || !filters) return;
+
+  filters.style.display = type === "overview" ? "none" : "block";
+
+  const output = $("#reportOutput");
+  if (output) {
+    output.innerHTML = "<p>Click Generate Report to create the selected report.</p>";
+  }
+
+  const message = $("#reportMessage");
+  if (message) message.textContent = "";
+}
+
+function reportDateMatches(date, fromDate, toDate) {
+  if (!date) return false;
+
+  const value = String(date);
+
+  if (fromDate && value < fromDate) return false;
+  if (toDate && value > toDate) return false;
+
+  return true;
+}
+
+function getReportDateRange() {
+  return {
+    fromDate: $("#reportFromDate")?.value || "",
+    toDate: $("#reportToDate")?.value || ""
+  };
+}
+
+function generateOverviewReport(output) {
+  output.innerHTML = "<p>Loading school overview...</p>";
+
+  return Promise.all([
+    getRecords("students"),
+    getRecords("teachers"),
+    getRecords("classes"),
+    getRecords("attendance"),
+    getRecords("exams"),
+    getRecords("results"),
+    getRecords("performance")
+  ]).then(([students, teachers, classes, attendance, exams, results, performance]) => {
+    output.innerHTML = `
+      <h2 style="text-align:center;">SCHOOL OVERVIEW REPORT</h2>
+      <p><strong>Generated:</strong> ${escapeHTML(getLocalDate())}</p>
+
+      <table>
+        <thead>
+          <tr><th>Category</th><th>Total Records</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Students</td><td>${students.length}</td></tr>
+          <tr><td>Teachers</td><td>${teachers.length}</td></tr>
+          <tr><td>Classes</td><td>${classes.length}</td></tr>
+          <tr><td>Attendance Records</td><td>${attendance.length}</td></tr>
+          <tr><td>Examinations</td><td>${exams.length}</td></tr>
+          <tr><td>Student Results</td><td>${results.length}</td></tr>
+          <tr><td>Teacher Evaluations</td><td>${performance.length}</td></tr>
+        </tbody>
+      </table>
+    `;
+  });
+}
+
+async function generateAttendanceReport(output, fromDate, toDate) {
+  const records = await getRecords("attendance");
+
+  const filtered = records.filter(record =>
+    reportDateMatches(record.date, fromDate, toDate)
+  );
+
+  const count = status =>
+    filtered.filter(record => record.status === status).length;
+
+  const students = filtered.filter(record => record.personType === "students");
+  const teachers = filtered.filter(record => record.personType === "teachers");
+
+  const rows = filtered
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .map(record => `
+      <tr>
+        <td>${escapeHTML(record.date || "")}</td>
+        <td>${escapeHTML(record.name || "")}</td>
+        <td>${escapeHTML(record.code || "")}</td>
+        <td>${record.personType === "teachers" ? "Teacher" : "Student"}</td>
+        <td>${escapeHTML(record.status || "")}</td>
+      </tr>
+    `).join("");
+
+  output.innerHTML = `
+    <h2 style="text-align:center;">ATTENDANCE REPORT</h2>
+    <p><strong>Period:</strong> ${escapeHTML(fromDate || "All dates")} to ${escapeHTML(toDate || "All dates")}</p>
+
+    <h3>Attendance Summary</h3>
+    <table>
+      <tbody>
+        <tr><th>Total Records</th><td>${filtered.length}</td></tr>
+        <tr><th>Present</th><td>${count("Present")}</td></tr>
+        <tr><th>Absent</th><td>${count("Absent")}</td></tr>
+        <tr><th>Late</th><td>${count("Late")}</td></tr>
+        <tr><th>Student Records</th><td>${students.length}</td></tr>
+        <tr><th>Teacher Records</th><td>${teachers.length}</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Attendance Details</h3>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Name</th><th>ID</th><th>Type</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || `<tr><td colspan="5">No attendance records found.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function generateResultsReport(output, fromDate, toDate) {
+  const results = await getRecords("results");
+
+  const filtered = results.filter(result =>
+    reportDateMatches(result.examDate, fromDate, toDate)
+  );
+
+  const rows = filtered
+    .sort((a, b) => String(a.examName || "").localeCompare(String(b.examName || "")))
+    .map(result => `
+      <tr>
+        <td>${escapeHTML(result.examName || "")}</td>
+        <td>${escapeHTML(result.className || "")}</td>
+        <td>${escapeHTML(result.subject || "")}</td>
+        <td>${escapeHTML(result.studentName || "")}</td>
+        <td>${escapeHTML(result.studentCode || "")}</td>
+        <td>${escapeHTML(result.marks ?? "")}</td>
+        <td>${escapeHTML(result.totalMarks ?? "")}</td>
+        <td>${Number(result.percentage || 0).toFixed(2)}%</td>
+        <td>${escapeHTML(result.grade || "")}</td>
+      </tr>
+    `).join("");
+
+  const average = filtered.length
+    ? filtered.reduce((sum, item) => sum + Number(item.percentage || 0), 0) / filtered.length
+    : 0;
+
+  output.innerHTML = `
+    <h2 style="text-align:center;">EXAMINATION RESULTS REPORT</h2>
+    <p><strong>Period:</strong> ${escapeHTML(fromDate || "All dates")} to ${escapeHTML(toDate || "All dates")}</p>
+
+    <p><strong>Total Student Results:</strong> ${filtered.length}</p>
+    <p><strong>Average Percentage:</strong> ${average.toFixed(2)}%</p>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Exam</th><th>Class</th><th>Subject</th>
+            <th>Student</th><th>Student ID</th>
+            <th>Mark</th><th>Total</th><th>Percentage</th><th>Grade</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || `<tr><td colspan="9">No examination results found.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function generatePerformanceReport(output, fromDate, toDate) {
+  const records = await getRecords("performance");
+
+  const filtered = records.filter(record =>
+    reportDateMatches(record.date, fromDate, toDate)
+  );
+
+  const rows = filtered
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .map(record => `
+      <tr>
+        <td>${escapeHTML(record.teacherName || "")}</td>
+        <td>${escapeHTML(record.teacherCode || "")}</td>
+        <td>${escapeHTML(record.department || "")}</td>
+        <td>${escapeHTML(record.date || "")}</td>
+        <td>${escapeHTML(record.totalScore ?? "")}/${escapeHTML(record.maximumScore ?? "")}</td>
+        <td>${Number(record.percentage || 0).toFixed(1)}%</td>
+        <td>${escapeHTML(record.overallRating || "")}</td>
+      </tr>
+    `).join("");
+
+  const average = filtered.length
+    ? filtered.reduce((sum, item) => sum + Number(item.percentage || 0), 0) / filtered.length
+    : 0;
+
+  output.innerHTML = `
+    <h2 style="text-align:center;">TEACHER PERFORMANCE REPORT</h2>
+    <p><strong>Period:</strong> ${escapeHTML(fromDate || "All dates")} to ${escapeHTML(toDate || "All dates")}</p>
+
+    <p><strong>Total Evaluations:</strong> ${filtered.length}</p>
+    <p><strong>Average Performance:</strong> ${average.toFixed(2)}%</p>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Teacher</th><th>Teacher ID</th><th>Department</th>
+            <th>Date</th><th>Score</th><th>Percentage</th><th>Rating</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || `<tr><td colspan="7">No teacher evaluations found.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function generateReport() {
+  const output = $("#reportOutput");
+  const message = $("#reportMessage");
+  const type = $("#reportType")?.value;
+
+  if (!output || !type) return;
+
+  const { fromDate, toDate } = getReportDateRange();
+
+  if (fromDate && toDate && fromDate > toDate) {
+    message.textContent = "From Date cannot be later than To Date.";
+    return;
+  }
+
+  output.innerHTML = "<p>Generating report...</p>";
+  message.textContent = "";
+
+  try {
+    if (type === "overview") {
+      await generateOverviewReport(output);
+    } else if (type === "attendance") {
+      await generateAttendanceReport(output, fromDate, toDate);
+    } else if (type === "results") {
+      await generateResultsReport(output, fromDate, toDate);
+    } else if (type === "performance") {
+      await generatePerformanceReport(output, fromDate, toDate);
+    }
+
+    message.textContent = "Report generated successfully.";
+
+  } catch (error) {
+    console.error("Report error:", error);
+    output.innerHTML = "<p>Unable to generate report.</p>";
+    message.textContent = "Error: " + error.message;
+  }
+}
+
+function printReport() {
+  const output = $("#reportOutput");
+
+  if (!output || !output.innerHTML.trim()) {
+    alert("Please generate a report first.");
+    return;
+  }
+
+  const printWindow = window.open("", "_blank");
+
+  if (!printWindow) {
+    alert("Popup blocked. Please allow popups and try again.");
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>School Report</title>
+      <style>
+        @page { size: A4 landscape; margin: 15mm; }
+        body { font-family: Arial, sans-serif; color: #111; font-size: 12px; }
+        h2 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #333; padding: 7px; text-align: left; }
+        th { background: #eee; }
+        p { line-height: 1.5; }
+        @media screen {
+          body { max-width: 1100px; margin: 20px auto; padding: 20px; }
+          button { padding: 10px 20px; margin-bottom: 15px; }
+        }
+        @media print {
+          button { display: none; }
+          tr { page-break-inside: avoid; }
+        }
+      </style>
+    </head>
+    <body>
+      <button onclick="window.print()">PRINT REPORT</button>
+      ${output.innerHTML}
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+}
+
+
+
+
+
+
+/* GLOBAL FUNCTIONS */
+
+window.showPage = showPage;
+window.addStudent = addStudent;
+window.addTeacher = addTeacher;
+window.addClass = addClass;
+window.removeRecord = removeRecord;
+
+window.loadAttendanceNames = loadAttendanceNames;
+window.saveAttendance = saveAttendance;
+
+window.addPerformanceArea = addPerformanceArea;
+window.savePerformance = savePerformance;
+window.editPerformance = editPerformance;
+window.cancelPerformanceEdit = cancelPerformanceEdit;
+window.printPerformance = printPerformance;
+window.updatePerformanceScore = updatePerformanceScore;
+
+window.saveExam = saveExam;
+window.selectExamForResults = selectExamForResults;
+window.loadExamDetails = loadExamDetails;
+window.saveResult = saveResult;
+window.editResult = editResult;
+window.cancelResultEdit = cancelResultEdit;
+window.removeExam = removeExam;
+window.loadResults = loadResults;
+
+window.changeReportType = changeReportType;
+window.generateReport = generateReport;
+window.printReport = printReport;
+
+/* AUTHENTICATION */
+
+onAuthStateChanged(auth, user => {
+  if (!user) {
+    window.location.href = "./login.html";
+    return;
+  }
+
+  currentUser = user;
+
+  const firstButton = document.querySelector("nav button");
+  showPage("dashboard", firstButton);
+});
