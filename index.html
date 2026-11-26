@@ -11,10 +11,8 @@
 
   <title>School Management System</title>
 
-  <!-- CSS -->
   <link rel="stylesheet" href="./style.css">
 
-  <!-- PWA -->
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icons/icon-192.png" type="image/png">
 
@@ -24,16 +22,32 @@
   <meta name="apple-mobile-web-app-title" content="School System">
 
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+  <style>
+    #appError {
+      display: none;
+      margin: 20px;
+      padding: 15px;
+      border: 1px solid #dc3545;
+      border-radius: 8px;
+      background: #fff0f0;
+      color: #8b0000;
+      overflow-wrap: anywhere;
+    }
+
+    #appError pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+  </style>
 </head>
 
 <body>
 
-  <!-- HEADER -->
   <header>
     <h1>School Management System</h1>
     <p>By Gebreslassie</p>
 
-    <!-- LANGUAGE SELECTOR -->
     <div style="margin: 12px;">
       <label for="languageSelect">Language / ቋንቋ:</label>
 
@@ -44,7 +58,6 @@
     </div>
   </header>
 
-  <!-- NAVIGATION -->
   <nav>
     <button type="button" class="active"
       onclick="showPage('dashboard', this)">
@@ -68,7 +81,7 @@
 
     <button type="button"
       onclick="showPage('classes', this)">
-      Classes & Subjects
+      Classes &amp; Subjects
     </button>
 
     <button type="button"
@@ -78,7 +91,7 @@
 
     <button type="button"
       onclick="showPage('results', this)">
-      Exams & Results
+      Exams &amp; Results
     </button>
 
     <button type="button"
@@ -87,34 +100,86 @@
     </button>
   </nav>
 
-  <!-- MAIN CONTENT -->
   <main id="content">
-    <p>Loading School Management System...</p>
+    <p id="loadingMessage">
+      Loading School Management System...
+    </p>
   </main>
 
-  <!-- FOOTER -->
+  <div id="appError">
+    <h3>Application Error</h3>
+    <p>The application could not load correctly.</p>
+    <pre id="errorDetails"></pre>
+  </div>
+
   <footer>
     School Management System · By Gebreslassie
   </footer>
 
-  <!-- LANGUAGE TRANSLATION -->
+  <!-- Error reporting -->
+  <script>
+    window.showPage = function(page, button) {
+      console.warn("Application is still loading. Requested page:", page);
+    };
+
+    function displayAppError(message) {
+      const errorBox = document.getElementById("appError");
+      const errorDetails = document.getElementById("errorDetails");
+
+      if (errorBox && errorDetails) {
+        errorDetails.textContent = String(message);
+        errorBox.style.display = "block";
+      }
+    }
+
+    window.addEventListener("error", function(event) {
+      displayAppError(
+        "Error: " + (event.message || "Unknown error") +
+        "\nFile: " + (event.filename || "Unknown") +
+        "\nLine: " + (event.lineno || "Unknown")
+      );
+    });
+
+    window.addEventListener("unhandledrejection", function(event) {
+      const reason = event.reason;
+      displayAppError(
+        "Promise Error: " +
+        (reason && reason.message ? reason.message : String(reason))
+      );
+    });
+
+    window.addEventListener("load", function() {
+      setTimeout(function() {
+        const loading = document.getElementById("loadingMessage");
+
+        if (loading && loading.isConnected) {
+          displayAppError(
+            "The application did not replace the loading message. " +
+            "Check app.js, Firebase authentication, and JavaScript errors."
+          );
+        }
+      }, 12000);
+    });
+  </script>
+
+  <!-- Language translation -->
   <script src="./language.js"></script>
 
-  <!-- MAIN APPLICATION -->
+  <!-- Main application -->
   <script type="module" src="./app.js"></script>
 
-  <!-- SERVICE WORKER -->
+  <!-- Service Worker -->
   <script>
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
+      window.addEventListener("load", function() {
         navigator.serviceWorker.register("./sw.js")
-          .then((registration) => {
+          .then(function(registration) {
             console.log(
               "Service Worker registered successfully:",
               registration.scope
             );
           })
-          .catch((error) => {
+          .catch(function(error) {
             console.error(
               "Service Worker registration failed:",
               error
