@@ -342,6 +342,12 @@ function escapeHTML(value) {
   })[char]);
 }
 
+// Safely encode a value used as a JavaScript argument inside an HTML attribute.
+// JSON.stringify protects JavaScript syntax; escapeHTML protects the HTML attribute.
+function inlineArg(value) {
+  return escapeHTML(JSON.stringify(String(value ?? "")));
+}
+
 function getLocalDate() {
   const now = new Date();
   const year = now.getFullYear();
@@ -355,9 +361,10 @@ function getLocalDate() {
 
 
 function showPage(page, button) {
-  if (!pages[page]) return;
+  const content = $("#content");
+  if (!pages[page] || !content) return;
 
-  $("#content").innerHTML = pages[page];
+  content.innerHTML = pages[page];
 
   document.querySelectorAll("nav button").forEach(btn => {
     btn.classList.remove("active");
@@ -416,7 +423,7 @@ async function displayRecords(collectionName, elementId) {
       <div class="panel">
         <strong>${escapeHTML(record.name)}</strong>
         <p>${escapeHTML(record.code || "")}</p>
-        <button onclick="removeRecord('${escapeHTML(record.id)}','${collectionName}')">Delete</button>
+        <button onclick="removeRecord(${inlineArg(record.id)},${inlineArg(collectionName)})">Delete</button>
       </div>
     `).join("");
 
@@ -799,9 +806,9 @@ async function loadPerformanceRecords() {
         <h4>Recommendations</h4>
         <p>${escapeHTML(record.recommendations || "")}</p>
 
-        <button onclick="editPerformance('${escapeHTML(record.id)}')">Edit / Update</button>
-        <button onclick="printPerformance('${escapeHTML(record.id)}')">Print Evaluation</button>
-        <button onclick="removeRecord('${escapeHTML(record.id)}','performance')">Delete</button>
+        <button onclick="editPerformance(${inlineArg(record.id)})">Edit / Update</button>
+        <button onclick="printPerformance(${inlineArg(record.id)})">Print Evaluation</button>
+        <button onclick="removeRecord(${inlineArg(record.id)},${inlineArg('performance')})">Delete</button>
       </div>
     `).join("");
 
@@ -1147,7 +1154,7 @@ async function loadAttendanceRecords() {
           </p>
           <p>Date: ${escapeHTML(record.date)}</p>
           <p>Status: ${escapeHTML(record.status)}</p>
-          <button onclick="removeRecord('${escapeHTML(record.id)}','attendance')">Delete</button>
+          <button onclick="removeRecord(${inlineArg(record.id)},${inlineArg('attendance')})">Delete</button>
         </div>
       `).join("")}
     `;
@@ -1267,10 +1274,10 @@ async function loadExams() {
         <p><strong>Subject:</strong> ${escapeHTML(exam.subject)}</p>
         <p><strong>Date:</strong> ${escapeHTML(exam.date)}</p>
         <p><strong>Total Marks:</strong> ${escapeHTML(exam.totalMarks)}</p>
-        <button onclick="selectExamForResults('${escapeHTML(exam.id)}')">
+        <button onclick="selectExamForResults(${inlineArg(exam.id)})">
           Enter Results
         </button>
-        <button onclick="removeExam('${escapeHTML(exam.id)}')">
+        <button onclick="removeExam(${inlineArg(exam.id)})">
           Delete Exam
         </button>
       </div>
@@ -1433,6 +1440,10 @@ async function saveResult() {
 
     const totalMarks = Number(exam.totalMarks);
 
+    if (!Number.isFinite(totalMarks) || totalMarks <= 0) {
+      throw new Error("This examination has an invalid total mark. Please edit or recreate the examination.");
+    }
+
     if (marks > totalMarks) {
       message.textContent = `Marks cannot be greater than ${totalMarks}.`;
       return;
@@ -1558,8 +1569,8 @@ async function loadResults() {
             <td>${percentage.toFixed(2)}%</td>
             <td><strong>${escapeHTML(result.grade)}</strong></td>
             <td>
-              <button onclick="editResult('${escapeHTML(result.id)}')">Edit</button>
-              <button onclick="removeRecord('${escapeHTML(result.id)}','results')">Delete</button>
+              <button onclick="editResult(${inlineArg(result.id)})">Edit</button>
+              <button onclick="removeRecord(${inlineArg(result.id)},${inlineArg('results')})">Delete</button>
             </td>
           </tr>
         `;
@@ -1717,6 +1728,7 @@ function changeReportType() {
 
   const output = $("#reportOutput");
   if (output) {
+    output.dataset.generated = "false";
     output.innerHTML = "<p>Click Generate Report to create the selected report.</p>";
   }
 
@@ -1960,10 +1972,12 @@ async function generateReport() {
       await generatePerformanceReport(output, fromDate, toDate);
     }
 
+    output.dataset.generated = "true";
     message.textContent = "Report generated successfully.";
 
   } catch (error) {
     console.error("Report error:", error);
+    output.dataset.generated = "false";
     output.innerHTML = "<p>Unable to generate report.</p>";
     message.textContent = "Error: " + error.message;
   }
@@ -1972,7 +1986,7 @@ async function generateReport() {
 function printReport() {
   const output = $("#reportOutput");
 
-  if (!output || !output.innerHTML.trim()) {
+  if (!output || output.dataset.generated !== "true" || !output.innerHTML.trim()) {
     alert("Please generate a report first.");
     return;
   }
@@ -2068,3 +2082,4 @@ onAuthStateChanged(auth, user => {
   const firstButton = document.querySelector("nav button");
   showPage("dashboard", firstButton);
 });
+
