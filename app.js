@@ -308,15 +308,6 @@ const pages = {
         <option value="performance">Teacher Performance</option>
       </select>
 
-      <div id="attendanceReportFilter" style="display:none;">
-        <label>Attendance Category</label>
-        <select id="attendanceReportType">
-          <option value="all">All Attendance</option>
-          <option value="students">Student Attendance Only</option>
-          <option value="teachers">Teacher Attendance Only</option>
-        </select>
-      </div>
-
       <div id="reportDateFilters">
         <label>From Date</label>
         <input type="date" id="reportFromDate">
@@ -326,7 +317,16 @@ const pages = {
       </div>
 
       <button onclick="generateReport()">Generate Report</button>
-      <button onclick="printReport()">Print Report</button>
+      <button onclick="printReport()">Print / Save PDF</button>
+
+      <h3>Send or Share Report</h3>
+      <div class="report-share-actions">
+        <button type="button" onclick="emailReport()">Gmail / Email</button>
+        <button type="button" onclick="whatsappReport()">WhatsApp</button>
+        <button type="button" onclick="telegramReport()">Telegram</button>
+        <button type="button" onclick="shareReport()">Share</button>
+      </div>
+      <p><small>To send the report as a PDF attachment: first choose Print / Save PDF, save the PDF, then attach it in Gmail, WhatsApp or Telegram.</small></p>
 
       <p id="reportMessage"></p>
     </div>
@@ -1107,18 +1107,6 @@ async function saveAttendance() {
   button.textContent = "Saving...";
 
   try {
-    const existingRecords = await getRecords("attendance");
-    const duplicate = existingRecords.find(record =>
-      String(record.personId) === String(personId) &&
-      String(record.personType || "").toLowerCase() === String(type).toLowerCase() &&
-      String(record.date || "") === String(date)
-    );
-
-    if (duplicate) {
-      message.textContent = "Attendance has already been recorded for this person on this date. The existing record was not changed.";
-      return;
-    }
-
     await addRecord("attendance", {
       personId,
       name: personName,
@@ -1736,11 +1724,6 @@ function changeReportType() {
 
   filters.style.display = type === "overview" ? "none" : "block";
 
-  const attendanceFilter = $("#attendanceReportFilter");
-  if (attendanceFilter) {
-    attendanceFilter.style.display = type === "attendance" ? "block" : "none";
-  }
-
   const output = $("#reportOutput");
   if (output) {
     output.innerHTML = "<p>Click Generate Report to create the selected report.</p>";
@@ -1802,70 +1785,33 @@ function generateOverviewReport(output) {
   });
 }
 
-function getAttendancePersonType(record) {
-  const type = String(record.personType || "").toLowerCase();
-  if (type === "teacher" || type === "teachers") return "teachers";
-  if (type === "student" || type === "students") return "students";
-  return "unknown";
-}
-
 async function generateAttendanceReport(output, fromDate, toDate) {
   const records = await getRecords("attendance");
-  const selectedType = $("#attendanceReportType")?.value || "all";
 
-  let filtered = records.filter(record =>
+  const filtered = records.filter(record =>
     reportDateMatches(record.date, fromDate, toDate)
   );
 
-  if (selectedType === "students" || selectedType === "teachers") {
-    filtered = filtered.filter(record => getAttendancePersonType(record) === selectedType);
-  }
-
-  filtered.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
-
   const count = status =>
-    filtered.filter(record => String(record.status || "").toLowerCase() === status.toLowerCase()).length;
+    filtered.filter(record => record.status === status).length;
 
-  const students = filtered.filter(record => getAttendancePersonType(record) === "students");
-  const teachers = filtered.filter(record => getAttendancePersonType(record) === "teachers");
+  const students = filtered.filter(record => record.personType === "students");
+  const teachers = filtered.filter(record => record.personType === "teachers");
 
-  const reportTitle = selectedType === "students"
-    ? "STUDENT ATTENDANCE REPORT"
-    : selectedType === "teachers"
-      ? "TEACHER ATTENDANCE REPORT"
-      : "ATTENDANCE REPORT";
-
-  const categorySummary = selectedType === "students"
-    ? `<tr><th>Student Records</th><td>${students.length}</td></tr>`
-    : selectedType === "teachers"
-      ? `<tr><th>Teacher Records</th><td>${teachers.length}</td></tr>`
-      : `
-          <tr><th>Student Records</th><td>${students.length}</td></tr>
-          <tr><th>Teacher Records</th><td>${teachers.length}</td></tr>
-        `;
-
-  const rows = filtered.map(record => {
-    const personType = getAttendancePersonType(record);
-    const typeLabel = personType === "teachers"
-      ? "Teacher"
-      : personType === "students"
-        ? "Student"
-        : "Unknown";
-
-    return `
+  const rows = filtered
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .map(record => `
       <tr>
         <td>${escapeHTML(record.date || "")}</td>
         <td>${escapeHTML(record.name || "")}</td>
         <td>${escapeHTML(record.code || "")}</td>
-        <td>${typeLabel}</td>
+        <td>${record.personType === "teachers" ? "Teacher" : "Student"}</td>
         <td>${escapeHTML(record.status || "")}</td>
       </tr>
-    `;
-  }).join("");
+    `).join("");
 
   output.innerHTML = `
-    <h2 style="text-align:center;">${reportTitle}</h2>
-    <p><strong>Category:</strong> ${selectedType === "students" ? "Students only" : selectedType === "teachers" ? "Teachers only" : "Students and Teachers"}</p>
+    <h2 style="text-align:center;">ATTENDANCE REPORT</h2>
     <p><strong>Period:</strong> ${escapeHTML(fromDate || "All dates")} to ${escapeHTML(toDate || "All dates")}</p>
 
     <h3>Attendance Summary</h3>
@@ -1875,7 +1821,8 @@ async function generateAttendanceReport(output, fromDate, toDate) {
         <tr><th>Present</th><td>${count("Present")}</td></tr>
         <tr><th>Absent</th><td>${count("Absent")}</td></tr>
         <tr><th>Late</th><td>${count("Late")}</td></tr>
-        ${categorySummary}
+        <tr><th>Student Records</th><td>${students.length}</td></tr>
+        <tr><th>Teacher Records</th><td>${teachers.length}</td></tr>
       </tbody>
     </table>
 
@@ -1888,7 +1835,7 @@ async function generateAttendanceReport(output, fromDate, toDate) {
           </tr>
         </thead>
         <tbody>
-          ${rows || `<tr><td colspan="5">No attendance records found for this category and period.</td></tr>`}
+          ${rows || `<tr><td colspan="5">No attendance records found.</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -2031,6 +1978,65 @@ async function generateReport() {
   }
 }
 
+function getReportShareContent() {
+  const output = $("#reportOutput");
+  if (!output || !output.innerHTML.trim() || output.textContent.includes("Select a report type")) {
+    alert("Please generate a report first.");
+    return null;
+  }
+
+  const title = output.querySelector("h2")?.textContent?.trim() || "LSAN WIN School Report";
+  const textContent = output.innerText || output.textContent || "";
+  return {
+    title,
+    text: `${title}\nLSAN WIN School Management System\n\n${textContent}`
+  };
+}
+
+function emailReport() {
+  const report = getReportShareContent();
+  if (!report) return;
+  const subject = encodeURIComponent(report.title + " - LSAN WIN School Management System");
+  const body = encodeURIComponent(report.text + "\n\nPlease find the report details above. For a PDF copy, attach the saved PDF file.");
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
+function whatsappReport() {
+  const report = getReportShareContent();
+  if (!report) return;
+  window.open(`https://wa.me/?text=${encodeURIComponent(report.text)}`, "_blank", "noopener");
+}
+
+function telegramReport() {
+  const report = getReportShareContent();
+  if (!report) return;
+  const text = encodeURIComponent(report.text);
+  window.open(`https://t.me/share/url?url=&text=${text}`, "_blank", "noopener");
+}
+
+async function shareReport() {
+  const report = getReportShareContent();
+  if (!report) return;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: report.title, text: report.text });
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        console.error("Report sharing failed:", error);
+        alert("Unable to share the report. Please try Gmail, WhatsApp or Telegram.");
+      }
+    }
+  } else {
+    try {
+      await navigator.clipboard.writeText(report.text);
+      alert("Report text copied. You can paste it into your preferred app.");
+    } catch (error) {
+      alert("Sharing is not supported by this browser. Please use Gmail, WhatsApp or Telegram.");
+    }
+  }
+}
+
 function printReport() {
   const output = $("#reportOutput");
 
@@ -2116,6 +2122,10 @@ window.loadResults = loadResults;
 window.changeReportType = changeReportType;
 window.generateReport = generateReport;
 window.printReport = printReport;
+window.emailReport = emailReport;
+window.whatsappReport = whatsappReport;
+window.telegramReport = telegramReport;
+window.shareReport = shareReport;
 
 /* AUTHENTICATION */
 
