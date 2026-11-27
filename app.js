@@ -308,6 +308,15 @@ const pages = {
         <option value="performance">Teacher Performance</option>
       </select>
 
+      <div id="attendanceReportFilter" style="display:none;">
+        <label>Attendance Category</label>
+        <select id="attendanceReportType">
+          <option value="all">All Attendance</option>
+          <option value="students">Student Attendance Only</option>
+          <option value="teachers">Teacher Attendance Only</option>
+        </select>
+      </div>
+
       <div id="reportDateFilters">
         <label>From Date</label>
         <input type="date" id="reportFromDate">
@@ -342,12 +351,6 @@ function escapeHTML(value) {
   })[char]);
 }
 
-// Safely encode a value used as a JavaScript argument inside an HTML attribute.
-// JSON.stringify protects JavaScript syntax; escapeHTML protects the HTML attribute.
-function inlineArg(value) {
-  return escapeHTML(JSON.stringify(String(value ?? "")));
-}
-
 function getLocalDate() {
   const now = new Date();
   const year = now.getFullYear();
@@ -361,10 +364,9 @@ function getLocalDate() {
 
 
 function showPage(page, button) {
-  const content = $("#content");
-  if (!pages[page] || !content) return;
+  if (!pages[page]) return;
 
-  content.innerHTML = pages[page];
+  $("#content").innerHTML = pages[page];
 
   document.querySelectorAll("nav button").forEach(btn => {
     btn.classList.remove("active");
@@ -423,7 +425,7 @@ async function displayRecords(collectionName, elementId) {
       <div class="panel">
         <strong>${escapeHTML(record.name)}</strong>
         <p>${escapeHTML(record.code || "")}</p>
-        <button onclick="removeRecord(${inlineArg(record.id)},${inlineArg(collectionName)})">Delete</button>
+        <button onclick="removeRecord('${escapeHTML(record.id)}','${collectionName}')">Delete</button>
       </div>
     `).join("");
 
@@ -806,9 +808,9 @@ async function loadPerformanceRecords() {
         <h4>Recommendations</h4>
         <p>${escapeHTML(record.recommendations || "")}</p>
 
-        <button onclick="editPerformance(${inlineArg(record.id)})">Edit / Update</button>
-        <button onclick="printPerformance(${inlineArg(record.id)})">Print Evaluation</button>
-        <button onclick="removeRecord(${inlineArg(record.id)},${inlineArg('performance')})">Delete</button>
+        <button onclick="editPerformance('${escapeHTML(record.id)}')">Edit / Update</button>
+        <button onclick="printPerformance('${escapeHTML(record.id)}')">Print Evaluation</button>
+        <button onclick="removeRecord('${escapeHTML(record.id)}','performance')">Delete</button>
       </div>
     `).join("");
 
@@ -1105,6 +1107,18 @@ async function saveAttendance() {
   button.textContent = "Saving...";
 
   try {
+    const existingRecords = await getRecords("attendance");
+    const duplicate = existingRecords.find(record =>
+      String(record.personId) === String(personId) &&
+      String(record.personType || "").toLowerCase() === String(type).toLowerCase() &&
+      String(record.date || "") === String(date)
+    );
+
+    if (duplicate) {
+      message.textContent = "Attendance has already been recorded for this person on this date. The existing record was not changed.";
+      return;
+    }
+
     await addRecord("attendance", {
       personId,
       name: personName,
@@ -1154,7 +1168,7 @@ async function loadAttendanceRecords() {
           </p>
           <p>Date: ${escapeHTML(record.date)}</p>
           <p>Status: ${escapeHTML(record.status)}</p>
-          <button onclick="removeRecord(${inlineArg(record.id)},${inlineArg('attendance')})">Delete</button>
+          <button onclick="removeRecord('${escapeHTML(record.id)}','attendance')">Delete</button>
         </div>
       `).join("")}
     `;
@@ -1274,10 +1288,10 @@ async function loadExams() {
         <p><strong>Subject:</strong> ${escapeHTML(exam.subject)}</p>
         <p><strong>Date:</strong> ${escapeHTML(exam.date)}</p>
         <p><strong>Total Marks:</strong> ${escapeHTML(exam.totalMarks)}</p>
-        <button onclick="selectExamForResults(${inlineArg(exam.id)})">
+        <button onclick="selectExamForResults('${escapeHTML(exam.id)}')">
           Enter Results
         </button>
-        <button onclick="removeExam(${inlineArg(exam.id)})">
+        <button onclick="removeExam('${escapeHTML(exam.id)}')">
           Delete Exam
         </button>
       </div>
@@ -1440,10 +1454,6 @@ async function saveResult() {
 
     const totalMarks = Number(exam.totalMarks);
 
-    if (!Number.isFinite(totalMarks) || totalMarks <= 0) {
-      throw new Error("This examination has an invalid total mark. Please edit or recreate the examination.");
-    }
-
     if (marks > totalMarks) {
       message.textContent = `Marks cannot be greater than ${totalMarks}.`;
       return;
@@ -1569,8 +1579,8 @@ async function loadResults() {
             <td>${percentage.toFixed(2)}%</td>
             <td><strong>${escapeHTML(result.grade)}</strong></td>
             <td>
-              <button onclick="editResult(${inlineArg(result.id)})">Edit</button>
-              <button onclick="removeRecord(${inlineArg(result.id)},${inlineArg('results')})">Delete</button>
+              <button onclick="editResult('${escapeHTML(result.id)}')">Edit</button>
+              <button onclick="removeRecord('${escapeHTML(result.id)}','results')">Delete</button>
             </td>
           </tr>
         `;
@@ -1726,9 +1736,13 @@ function changeReportType() {
 
   filters.style.display = type === "overview" ? "none" : "block";
 
+  const attendanceFilter = $("#attendanceReportFilter");
+  if (attendanceFilter) {
+    attendanceFilter.style.display = type === "attendance" ? "block" : "none";
+  }
+
   const output = $("#reportOutput");
   if (output) {
-    output.dataset.generated = "false";
     output.innerHTML = "<p>Click Generate Report to create the selected report.</p>";
   }
 
@@ -1788,33 +1802,70 @@ function generateOverviewReport(output) {
   });
 }
 
+function getAttendancePersonType(record) {
+  const type = String(record.personType || "").toLowerCase();
+  if (type === "teacher" || type === "teachers") return "teachers";
+  if (type === "student" || type === "students") return "students";
+  return "unknown";
+}
+
 async function generateAttendanceReport(output, fromDate, toDate) {
   const records = await getRecords("attendance");
+  const selectedType = $("#attendanceReportType")?.value || "all";
 
-  const filtered = records.filter(record =>
+  let filtered = records.filter(record =>
     reportDateMatches(record.date, fromDate, toDate)
   );
 
+  if (selectedType === "students" || selectedType === "teachers") {
+    filtered = filtered.filter(record => getAttendancePersonType(record) === selectedType);
+  }
+
+  filtered.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
   const count = status =>
-    filtered.filter(record => record.status === status).length;
+    filtered.filter(record => String(record.status || "").toLowerCase() === status.toLowerCase()).length;
 
-  const students = filtered.filter(record => record.personType === "students");
-  const teachers = filtered.filter(record => record.personType === "teachers");
+  const students = filtered.filter(record => getAttendancePersonType(record) === "students");
+  const teachers = filtered.filter(record => getAttendancePersonType(record) === "teachers");
 
-  const rows = filtered
-    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
-    .map(record => `
+  const reportTitle = selectedType === "students"
+    ? "STUDENT ATTENDANCE REPORT"
+    : selectedType === "teachers"
+      ? "TEACHER ATTENDANCE REPORT"
+      : "ATTENDANCE REPORT";
+
+  const categorySummary = selectedType === "students"
+    ? `<tr><th>Student Records</th><td>${students.length}</td></tr>`
+    : selectedType === "teachers"
+      ? `<tr><th>Teacher Records</th><td>${teachers.length}</td></tr>`
+      : `
+          <tr><th>Student Records</th><td>${students.length}</td></tr>
+          <tr><th>Teacher Records</th><td>${teachers.length}</td></tr>
+        `;
+
+  const rows = filtered.map(record => {
+    const personType = getAttendancePersonType(record);
+    const typeLabel = personType === "teachers"
+      ? "Teacher"
+      : personType === "students"
+        ? "Student"
+        : "Unknown";
+
+    return `
       <tr>
         <td>${escapeHTML(record.date || "")}</td>
         <td>${escapeHTML(record.name || "")}</td>
         <td>${escapeHTML(record.code || "")}</td>
-        <td>${record.personType === "teachers" ? "Teacher" : "Student"}</td>
+        <td>${typeLabel}</td>
         <td>${escapeHTML(record.status || "")}</td>
       </tr>
-    `).join("");
+    `;
+  }).join("");
 
   output.innerHTML = `
-    <h2 style="text-align:center;">ATTENDANCE REPORT</h2>
+    <h2 style="text-align:center;">${reportTitle}</h2>
+    <p><strong>Category:</strong> ${selectedType === "students" ? "Students only" : selectedType === "teachers" ? "Teachers only" : "Students and Teachers"}</p>
     <p><strong>Period:</strong> ${escapeHTML(fromDate || "All dates")} to ${escapeHTML(toDate || "All dates")}</p>
 
     <h3>Attendance Summary</h3>
@@ -1824,8 +1875,7 @@ async function generateAttendanceReport(output, fromDate, toDate) {
         <tr><th>Present</th><td>${count("Present")}</td></tr>
         <tr><th>Absent</th><td>${count("Absent")}</td></tr>
         <tr><th>Late</th><td>${count("Late")}</td></tr>
-        <tr><th>Student Records</th><td>${students.length}</td></tr>
-        <tr><th>Teacher Records</th><td>${teachers.length}</td></tr>
+        ${categorySummary}
       </tbody>
     </table>
 
@@ -1838,7 +1888,7 @@ async function generateAttendanceReport(output, fromDate, toDate) {
           </tr>
         </thead>
         <tbody>
-          ${rows || `<tr><td colspan="5">No attendance records found.</td></tr>`}
+          ${rows || `<tr><td colspan="5">No attendance records found for this category and period.</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -1972,12 +2022,10 @@ async function generateReport() {
       await generatePerformanceReport(output, fromDate, toDate);
     }
 
-    output.dataset.generated = "true";
     message.textContent = "Report generated successfully.";
 
   } catch (error) {
     console.error("Report error:", error);
-    output.dataset.generated = "false";
     output.innerHTML = "<p>Unable to generate report.</p>";
     message.textContent = "Error: " + error.message;
   }
@@ -1986,7 +2034,7 @@ async function generateReport() {
 function printReport() {
   const output = $("#reportOutput");
 
-  if (!output || output.dataset.generated !== "true" || !output.innerHTML.trim()) {
+  if (!output || !output.innerHTML.trim()) {
     alert("Please generate a report first.");
     return;
   }
@@ -2082,4 +2130,5 @@ onAuthStateChanged(auth, user => {
   const firstButton = document.querySelector("nav button");
   showPage("dashboard", firstButton);
 });
+
 
