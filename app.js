@@ -1780,6 +1780,8 @@ function generateOverviewReport(output) {
   });
 }
 
+
+
 async function generateAttendanceReport(output, fromDate, toDate) {
   const records = await getRecords("attendance");
 
@@ -1787,116 +1789,105 @@ async function generateAttendanceReport(output, fromDate, toDate) {
     reportDateMatches(record.date, fromDate, toDate)
   );
 
-  const count = status =>
-    filtered.filter(record => record.status === status).length;
+  const students = filtered.filter(record =>
+    record.personType === "students"
+  );
 
-  const students = filtered.filter(record => record.personType === "students");
-  const teachers = filtered.filter(record => record.personType === "teachers");
+  const teachers = filtered.filter(record =>
+    record.personType === "teachers"
+  );
 
-  const rows = filtered
-    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
-    .map(record => `
-      <tr>
-        <td>${escapeHTML(record.date || "")}</td>
-        <td>${escapeHTML(record.name || "")}</td>
-        <td>${escapeHTML(record.code || "")}</td>
-        <td>${record.personType === "teachers" ? "Teacher" : "Student"}</td>
-        <td>${escapeHTML(record.status || "")}</td>
-      </tr>
-    `).join("");
+  const renderAttendanceSection = (title, sectionRecords) => {
+    const countStatus = status =>
+      sectionRecords.filter(record =>
+        String(record.status || "").toLowerCase() === status.toLowerCase()
+      ).length;
 
-  
+    const sectionRows = sectionRecords
+      .slice()
+      .sort((a, b) =>
+        String(b.date || "").localeCompare(String(a.date || ""))
+      )
+      .map(record => `
+        <tr>
+          <td>${escapeHTML(record.date || "")}</td>
+          <td>${escapeHTML(record.name || "")}</td>
+          <td>${escapeHTML(record.code || "")}</td>
+          <td>${escapeHTML(record.status || "")}</td>
+        </tr>
+      `).join("");
 
-  output.innerHTML = `
-  
+    return `
+      <h2 style="text-align:center;">${title}</h2>
 
-const renderAttendanceSection = (title, records) => {
-  const countStatus = status =>
-    records.filter(record =>
-      String(record.status || "").toLowerCase() === status.toLowerCase()
-    ).length;
-
-  const sectionRows = records.map(record => `
-    <tr>
-      <td>${escapeHTML(record.date || "")}</td>
-      <td>${escapeHTML(
-        record.name ||
-        record.studentName ||
-        record.teacherName ||
-        ""
-      )}</td>
-      <td>${escapeHTML(
-        record.personId ||
-        record.studentId ||
-        record.teacherId ||
-        record.id ||
-        ""
-      )}</td>
-      <td>${escapeHTML(record.status || "")}</td>
-    </tr>
-  `).join("");
-
-  return `
-    <h2 style="text-align:center;">${title}</h2>
-
-    <h3>Attendance Summary</h3>
-    <table>
-      <tbody>
-        <tr><th>Total Records</th><td>${records.length}</td></tr>
-        <tr><th>Present</th><td>${countStatus("Present")}</td></tr>
-        <tr><th>Absent</th><td>${countStatus("Absent")}</td></tr>
-        <tr><th>Late</th><td>${countStatus("Late")}</td></tr>
-      </tbody>
-    </table>
-
-    <h3>Attendance Details</h3>
-    <div style="overflow-x:auto;">
+      <h3>Attendance Summary</h3>
       <table>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Name</th>
-            <th>ID</th>
-            <th>Status</th>
-          </tr>
-        </thead>
         <tbody>
-          ${sectionRows || `
-            <tr>
-              <td colspan="4">No attendance records found.</td>
-            </tr>
-          `}
+          <tr>
+            <th>Total Records</th>
+            <td>${sectionRecords.length}</td>
+          </tr>
+          <tr>
+            <th>Present</th>
+            <td>${countStatus("Present")}</td>
+          </tr>
+          <tr>
+            <th>Absent</th>
+            <td>${countStatus("Absent")}</td>
+          </tr>
+          <tr>
+            <th>Late</th>
+            <td>${countStatus("Late")}</td>
+          </tr>
         </tbody>
       </table>
-    </div>
+
+      <h3>Attendance Details</h3>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Name</th>
+              <th>ID</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sectionRows || `
+              <tr>
+                <td colspan="4">No attendance records found.</td>
+              </tr>
+            `}
+          </tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  output.innerHTML = `
+    <h2 style="text-align:center;">ATTENDANCE REPORT</h2>
+
+    <p>
+      <strong>Period:</strong>
+      ${escapeHTML(fromDate || "All dates")}
+      to
+      ${escapeHTML(toDate || "All dates")}
+    </p>
+
+    ${renderAttendanceSection(
+      "STUDENT ATTENDANCE SUMMARY AND DETAILS",
+      students
+    )}
+
+    <hr style="margin:30px 0;">
+
+    ${renderAttendanceSection(
+      "TEACHER ATTENDANCE SUMMARY AND DETAILS",
+      teachers
+    )}
   `;
-};
-
-output.innerHTML = `
-  <h2 style="text-align:center;">ATTENDANCE REPORT</h2>
-
-  <p>
-    <strong>Period:</strong>
-    ${escapeHTML(fromDate || "All dates")}
-    to
-    ${escapeHTML(toDate || "All dates")}
-  </p>
-
-  ${renderAttendanceSection(
-    "STUDENT ATTENDANCE REPORT",
-    students
-  )}
-
-  <hr style="margin:30px 0;">
-
-  ${renderAttendanceSection(
-    "TEACHER ATTENDANCE REPORT",
-    teachers
-  )}
-`;
-
-
-
+}
 
 async function generateResultsReport(output, fromDate, toDate) {
   const results = await getRecords("results");
@@ -1906,7 +1897,9 @@ async function generateResultsReport(output, fromDate, toDate) {
   );
 
   const rows = filtered
-    .sort((a, b) => String(a.examName || "").localeCompare(String(b.examName || "")))
+    .sort((a, b) =>
+      String(a.examName || "").localeCompare(String(b.examName || ""))
+    )
     .map(result => `
       <tr>
         <td>${escapeHTML(result.examName || "")}</td>
@@ -1922,12 +1915,18 @@ async function generateResultsReport(output, fromDate, toDate) {
     `).join("");
 
   const average = filtered.length
-    ? filtered.reduce((sum, item) => sum + Number(item.percentage || 0), 0) / filtered.length
+    ? filtered.reduce((sum, item) =>
+        sum + Number(item.percentage || 0), 0
+      ) / filtered.length
     : 0;
 
   output.innerHTML = `
     <h2 style="text-align:center;">EXAMINATION RESULTS REPORT</h2>
-    <p><strong>Period:</strong> ${escapeHTML(fromDate || "All dates")} to ${escapeHTML(toDate || "All dates")}</p>
+    <p>
+      <strong>Period:</strong>
+      ${escapeHTML(fromDate || "All dates")} to
+      ${escapeHTML(toDate || "All dates")}
+    </p>
 
     <p><strong>Total Student Results:</strong> ${filtered.length}</p>
     <p><strong>Average Percentage:</strong> ${average.toFixed(2)}%</p>
@@ -1936,13 +1935,23 @@ async function generateResultsReport(output, fromDate, toDate) {
       <table>
         <thead>
           <tr>
-            <th>Exam</th><th>Class</th><th>Subject</th>
-            <th>Student</th><th>Student ID</th>
-            <th>Mark</th><th>Total</th><th>Percentage</th><th>Grade</th>
+            <th>Exam</th>
+            <th>Class</th>
+            <th>Subject</th>
+            <th>Student</th>
+            <th>Student ID</th>
+            <th>Mark</th>
+            <th>Total</th>
+            <th>Percentage</th>
+            <th>Grade</th>
           </tr>
         </thead>
         <tbody>
-          ${rows || `<tr><td colspan="9">No examination results found.</td></tr>`}
+          ${rows || `
+            <tr>
+              <td colspan="9">No examination results found.</td>
+            </tr>
+          `}
         </tbody>
       </table>
     </div>
@@ -1957,26 +1966,37 @@ async function generatePerformanceReport(output, fromDate, toDate) {
   );
 
   const rows = filtered
-    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .sort((a, b) =>
+      String(b.date || "").localeCompare(String(a.date || ""))
+    )
     .map(record => `
       <tr>
         <td>${escapeHTML(record.teacherName || "")}</td>
         <td>${escapeHTML(record.teacherCode || "")}</td>
         <td>${escapeHTML(record.department || "")}</td>
         <td>${escapeHTML(record.date || "")}</td>
-        <td>${escapeHTML(record.totalScore ?? "")}/${escapeHTML(record.maximumScore ?? "")}</td>
+        <td>
+          ${escapeHTML(record.totalScore ?? "")}/
+          ${escapeHTML(record.maximumScore ?? "")}
+        </td>
         <td>${Number(record.percentage || 0).toFixed(1)}%</td>
         <td>${escapeHTML(record.overallRating || "")}</td>
       </tr>
     `).join("");
 
   const average = filtered.length
-    ? filtered.reduce((sum, item) => sum + Number(item.percentage || 0), 0) / filtered.length
+    ? filtered.reduce((sum, item) =>
+        sum + Number(item.percentage || 0), 0
+      ) / filtered.length
     : 0;
 
   output.innerHTML = `
     <h2 style="text-align:center;">TEACHER PERFORMANCE REPORT</h2>
-    <p><strong>Period:</strong> ${escapeHTML(fromDate || "All dates")} to ${escapeHTML(toDate || "All dates")}</p>
+    <p>
+      <strong>Period:</strong>
+      ${escapeHTML(fromDate || "All dates")} to
+      ${escapeHTML(toDate || "All dates")}
+    </p>
 
     <p><strong>Total Evaluations:</strong> ${filtered.length}</p>
     <p><strong>Average Performance:</strong> ${average.toFixed(2)}%</p>
@@ -1985,12 +2005,21 @@ async function generatePerformanceReport(output, fromDate, toDate) {
       <table>
         <thead>
           <tr>
-            <th>Teacher</th><th>Teacher ID</th><th>Department</th>
-            <th>Date</th><th>Score</th><th>Percentage</th><th>Rating</th>
+            <th>Teacher</th>
+            <th>Teacher ID</th>
+            <th>Department</th>
+            <th>Date</th>
+            <th>Score</th>
+            <th>Percentage</th>
+            <th>Rating</th>
           </tr>
         </thead>
         <tbody>
-          ${rows || `<tr><td colspan="7">No teacher evaluations found.</td></tr>`}
+          ${rows || `
+            <tr>
+              <td colspan="7">No teacher evaluations found.</td>
+            </tr>
+          `}
         </tbody>
       </table>
     </div>
@@ -2036,13 +2065,22 @@ async function generateReport() {
 
 function getReportShareContent() {
   const output = $("#reportOutput");
-  if (!output || !output.innerHTML.trim() || output.textContent.includes("Select a report type")) {
+
+  if (
+    !output ||
+    !output.innerHTML.trim() ||
+    output.textContent.includes("Select a report type")
+  ) {
     alert("Please generate a report first.");
     return null;
   }
 
-  const title = output.querySelector("h2")?.textContent?.trim() || "LSAN WIN School Report";
+  const title =
+    output.querySelector("h2")?.textContent?.trim() ||
+    "LSAN WIN School Report";
+
   const textContent = output.innerText || output.textContent || "";
+
   return {
     title,
     text: `${title}\nLSAN WIN School Management System\n\n${textContent}`
@@ -2052,22 +2090,41 @@ function getReportShareContent() {
 function emailReport() {
   const report = getReportShareContent();
   if (!report) return;
-  const subject = encodeURIComponent(report.title + " - LSAN WIN School Management System");
-  const body = encodeURIComponent(report.text + "\n\nPlease find the report details above. For a PDF copy, attach the saved PDF file.");
+
+  const subject = encodeURIComponent(
+    report.title + " - LSAN WIN School Management System"
+  );
+
+  const body = encodeURIComponent(
+    report.text +
+    "\n\nPlease find the report details above. For a PDF copy, attach the saved PDF file."
+  );
+
   window.location.href = `mailto:?subject=${subject}&body=${body}`;
 }
 
 function whatsappReport() {
   const report = getReportShareContent();
   if (!report) return;
-  window.open(`https://wa.me/?text=${encodeURIComponent(report.text)}`, "_blank", "noopener");
+
+  window.open(
+    `https://wa.me/?text=${encodeURIComponent(report.text)}`,
+    "_blank",
+    "noopener"
+  );
 }
 
 function telegramReport() {
   const report = getReportShareContent();
   if (!report) return;
+
   const text = encodeURIComponent(report.text);
-  window.open(`https://t.me/share/url?url=&text=${text}`, "_blank", "noopener");
+
+  window.open(
+    `https://t.me/share/url?url=&text=${text}`,
+    "_blank",
+    "noopener"
+  );
 }
 
 async function shareReport() {
@@ -2076,19 +2133,28 @@ async function shareReport() {
 
   if (navigator.share) {
     try {
-      await navigator.share({ title: report.title, text: report.text });
+      await navigator.share({
+        title: report.title,
+        text: report.text
+      });
     } catch (error) {
       if (error.name !== "AbortError") {
         console.error("Report sharing failed:", error);
-        alert("Unable to share the report. Please try Gmail, WhatsApp or Telegram.");
+        alert(
+          "Unable to share the report. Please try Gmail, WhatsApp or Telegram."
+        );
       }
     }
   } else {
     try {
       await navigator.clipboard.writeText(report.text);
-      alert("Report text copied. You can paste it into your preferred app.");
+      alert(
+        "Report text copied. You can paste it into your preferred app."
+      );
     } catch (error) {
-      alert("Sharing is not supported by this browser. Please use Gmail, WhatsApp or Telegram.");
+      alert(
+        "Sharing is not supported by this browser. Please use Gmail, WhatsApp or Telegram."
+      );
     }
   }
 }
@@ -2109,6 +2175,7 @@ function printReport() {
   }
 
   printWindow.document.open();
+
   printWindow.document.write(`
     <!DOCTYPE html>
     <html>
@@ -2116,20 +2183,62 @@ function printReport() {
       <meta charset="UTF-8">
       <title>School Report</title>
       <style>
-        @page { size: A4 landscape; margin: 15mm; }
-        body { font-family: Arial, sans-serif; color: #111; font-size: 12px; }
-        h2 { text-align: center; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #333; padding: 7px; text-align: left; }
-        th { background: #eee; }
-        p { line-height: 1.5; }
-        @media screen {
-          body { max-width: 1100px; margin: 20px auto; padding: 20px; }
-          button { padding: 10px 20px; margin-bottom: 15px; }
+        @page {
+          size: A4 landscape;
+          margin: 15mm;
         }
+
+        body {
+          font-family: Arial, sans-serif;
+          color: #111;
+          font-size: 12px;
+        }
+
+        h2 {
+          text-align: center;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 15px;
+        }
+
+        th, td {
+          border: 1px solid #333;
+          padding: 7px;
+          text-align: left;
+        }
+
+        th {
+          background: #eee;
+        }
+
+        p {
+          line-height: 1.5;
+        }
+
+        @media screen {
+          body {
+            max-width: 1100px;
+            margin: 20px auto;
+            padding: 20px;
+          }
+
+          button {
+            padding: 10px 20px;
+            margin-bottom: 15px;
+          }
+        }
+
         @media print {
-          button { display: none; }
-          tr { page-break-inside: avoid; }
+          button {
+            display: none;
+          }
+
+          tr {
+            page-break-inside: avoid;
+          }
         }
       </style>
     </head>
@@ -2139,57 +2248,7 @@ function printReport() {
     </body>
     </html>
   `);
+
   printWindow.document.close();
   printWindow.focus();
 }
-
-/* GLOBAL FUNCTIONS */
-
-window.showPage = showPage;
-window.addStudent = addStudent;
-window.addTeacher = addTeacher;
-window.addClass = addClass;
-window.removeRecord = removeRecord;
-
-window.loadAttendanceNames = loadAttendanceNames;
-window.saveAttendance = saveAttendance;
-
-window.addPerformanceArea = addPerformanceArea;
-window.savePerformance = savePerformance;
-window.editPerformance = editPerformance;
-window.cancelPerformanceEdit = cancelPerformanceEdit;
-window.printPerformance = printPerformance;
-window.updatePerformanceScore = updatePerformanceScore;
-
-window.saveExam = saveExam;
-window.selectExamForResults = selectExamForResults;
-window.loadExamDetails = loadExamDetails;
-window.saveResult = saveResult;
-window.editResult = editResult;
-window.cancelResultEdit = cancelResultEdit;
-window.removeExam = removeExam;
-window.loadResults = loadResults;
-
-window.changeReportType = changeReportType;
-window.generateReport = generateReport;
-window.printReport = printReport;
-window.emailReport = emailReport;
-window.whatsappReport = whatsappReport;
-window.telegramReport = telegramReport;
-window.shareReport = shareReport;
-
-/* AUTHENTICATION */
-
-onAuthStateChanged(auth, user => {
-  if (!user) {
-    window.location.href = "./login.html";
-    return;
-  }
-
-  currentUser = user;
-
-  const firstButton = document.querySelector("nav button");
-  showPage("dashboard", firstButton);
-});
-
-
