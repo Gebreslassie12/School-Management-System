@@ -1809,17 +1809,29 @@ async function generateAttendanceReport(output, fromDate, toDate) {
 
   output.innerHTML = `
   
-const renderAttendanceReport = (title, records) => {
-  const getCount = status =>
+
+const renderAttendanceSection = (title, records) => {
+  const countStatus = status =>
     records.filter(record =>
       String(record.status || "").toLowerCase() === status.toLowerCase()
     ).length;
 
-  const reportRows = records.map(record => `
+  const sectionRows = records.map(record => `
     <tr>
       <td>${escapeHTML(record.date || "")}</td>
-      <td>${escapeHTML(record.name || record.studentName || record.teacherName || "")}</td>
-      <td>${escapeHTML(record.personId || record.studentId || record.teacherId || record.id || "")}</td>
+      <td>${escapeHTML(
+        record.name ||
+        record.studentName ||
+        record.teacherName ||
+        ""
+      )}</td>
+      <td>${escapeHTML(
+        record.personId ||
+        record.studentId ||
+        record.teacherId ||
+        record.id ||
+        ""
+      )}</td>
       <td>${escapeHTML(record.status || "")}</td>
     </tr>
   `).join("");
@@ -1831,9 +1843,9 @@ const renderAttendanceReport = (title, records) => {
     <table>
       <tbody>
         <tr><th>Total Records</th><td>${records.length}</td></tr>
-        <tr><th>Present</th><td>${getCount("Present")}</td></tr>
-        <tr><th>Absent</th><td>${getCount("Absent")}</td></tr>
-        <tr><th>Late</th><td>${getCount("Late")}</td></tr>
+        <tr><th>Present</th><td>${countStatus("Present")}</td></tr>
+        <tr><th>Absent</th><td>${countStatus("Absent")}</td></tr>
+        <tr><th>Late</th><td>${countStatus("Late")}</td></tr>
       </tbody>
     </table>
 
@@ -1849,7 +1861,11 @@ const renderAttendanceReport = (title, records) => {
           </tr>
         </thead>
         <tbody>
-          ${reportRows || `<tr><td colspan="4">No attendance records found.</td></tr>`}
+          ${sectionRows || `
+            <tr>
+              <td colspan="4">No attendance records found.</td>
+            </tr>
+          `}
         </tbody>
       </table>
     </div>
@@ -1857,18 +1873,27 @@ const renderAttendanceReport = (title, records) => {
 };
 
 output.innerHTML = `
-  <p><strong>Period:</strong>
-    ${escapeHTML(fromDate || "All dates")} to
+  <h2 style="text-align:center;">ATTENDANCE REPORT</h2>
+
+  <p>
+    <strong>Period:</strong>
+    ${escapeHTML(fromDate || "All dates")}
+    to
     ${escapeHTML(toDate || "All dates")}
   </p>
 
-  ${renderAttendanceReport("STUDENT ATTENDANCE REPORT", students)}
+  ${renderAttendanceSection(
+    "STUDENT ATTENDANCE REPORT",
+    students
+  )}
 
   <hr style="margin:30px 0;">
 
-  ${renderAttendanceReport("TEACHER ATTENDANCE REPORT", teachers)}
+  ${renderAttendanceSection(
+    "TEACHER ATTENDANCE REPORT",
+    teachers
+  )}
 `;
-}
 
 
 
