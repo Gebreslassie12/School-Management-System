@@ -11,11 +11,16 @@
 
   <title>School Management System</title>
 
+  <!-- Main stylesheet -->
   <link rel="stylesheet" href="./style.css">
 
+  <!-- PWA Manifest -->
   <link rel="manifest" href="./manifest.json">
+
+  <!-- Application icon -->
   <link rel="icon" href="./icons/icon-192.png" type="image/png">
 
+  <!-- Mobile application settings -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -35,15 +40,26 @@
       overflow-wrap: anywhere;
     }
 
+    #appError h3 {
+      margin-top: 0;
+    }
+
     #appError pre {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
+      font-size: 13px;
+    }
+
+    #loadingMessage {
+      text-align: center;
+      padding: 30px;
     }
   </style>
 </head>
 
 <body>
 
+  <!-- Application Header -->
   <header>
     <h1>School Management System</h1>
     <p>By Gebreslassie</p>
@@ -58,136 +74,228 @@
     </div>
   </header>
 
+  <!-- Navigation -->
   <nav>
-    <button type="button" class="active"
+
+    <button
+      type="button"
+      class="active"
       onclick="showPage('dashboard', this)">
       Dashboard
     </button>
 
-    <button type="button"
+    <button
+      type="button"
       onclick="showPage('students', this)">
       Students
     </button>
 
-    <button type="button"
+    <button
+      type="button"
       onclick="showPage('teachers', this)">
       Teachers
     </button>
 
-    <button type="button"
+    <button
+      type="button"
       onclick="showPage('performance', this)">
       Teacher Performance
     </button>
 
-    <button type="button"
+    <button
+      type="button"
       onclick="showPage('classes', this)">
       Classes &amp; Subjects
     </button>
 
-    <button type="button"
+    <button
+      type="button"
       onclick="showPage('attendance', this)">
       Attendance
     </button>
 
-    <button type="button"
+    <button
+      type="button"
       onclick="showPage('results', this)">
       Exams &amp; Results
     </button>
 
-    <button type="button"
+    <button
+      type="button"
       onclick="showPage('reports', this)">
       Reports
     </button>
+
   </nav>
 
+  <!-- Main Application Content -->
   <main id="content">
+
     <p id="loadingMessage">
       Loading School Management System...
     </p>
+
   </main>
 
-  <div id="appError">
+  <!-- Application Error Display -->
+  <div id="appError" role="alert" aria-live="assertive">
+
     <h3>Application Error</h3>
-    <p>The application could not load correctly.</p>
+
+    <p>
+      The application could not load correctly.
+    </p>
+
     <pre id="errorDetails"></pre>
+
   </div>
 
+  <!-- Footer -->
   <footer>
     School Management System · By Gebreslassie
   </footer>
 
-  <!-- Error reporting -->
+  <!-- Error Handling -->
   <script>
+
+    // Temporary function until app.js loads
     window.showPage = function(page, button) {
-      console.warn("Application is still loading. Requested page:", page);
+      console.warn(
+        "Application is still loading. Requested page:",
+        page
+      );
     };
 
+    // Display application errors
     function displayAppError(message) {
-      const errorBox = document.getElementById("appError");
-      const errorDetails = document.getElementById("errorDetails");
+
+      const errorBox =
+        document.getElementById("appError");
+
+      const errorDetails =
+        document.getElementById("errorDetails");
 
       if (errorBox && errorDetails) {
+
         errorDetails.textContent = String(message);
+
         errorBox.style.display = "block";
+
       }
+
     }
 
+    // JavaScript errors
     window.addEventListener("error", function(event) {
+
       displayAppError(
-        "Error: " + (event.message || "Unknown error") +
-        "\nFile: " + (event.filename || "Unknown") +
-        "\nLine: " + (event.lineno || "Unknown")
+        "Error: " +
+        (event.message || "Unknown error") +
+
+        "\nFile: " +
+        (event.filename || "Unknown") +
+
+        "\nLine: " +
+        (event.lineno || "Unknown")
       );
+
     });
 
-    window.addEventListener("unhandledrejection", function(event) {
-      const reason = event.reason;
-      displayAppError(
-        "Promise Error: " +
-        (reason && reason.message ? reason.message : String(reason))
-      );
-    });
+    // Promise errors
+    window.addEventListener(
+      "unhandledrejection",
+      function(event) {
 
+        const reason = event.reason;
+
+        displayAppError(
+          "Promise Error: " +
+
+          (
+            reason && reason.message
+              ? reason.message
+              : String(reason)
+          )
+        );
+
+      }
+    );
+
+    // Check whether the application loaded
     window.addEventListener("load", function() {
+
       setTimeout(function() {
-        const loading = document.getElementById("loadingMessage");
+
+        const loading =
+          document.getElementById("loadingMessage");
 
         if (loading && loading.isConnected) {
+
           displayAppError(
-            "The application did not replace the loading message. " +
-            "Check app.js, Firebase authentication, and JavaScript errors."
+            "The application did not replace the loading message.\n\n" +
+
+            "Please check:\n" +
+            "1. app.js\n" +
+            "2. firebase.js\n" +
+            "3. Firebase authentication\n" +
+            "4. JavaScript errors\n" +
+            "5. Internet connection"
           );
+
         }
+
       }, 12000);
+
     });
+
   </script>
 
-  <!-- Language translation -->
+  <!-- Language Translation -->
   <script src="./language.js"></script>
 
-  <!-- Main application -->
+  <!-- Main Application Module -->
   <script type="module" src="./app.js"></script>
 
-  <!-- Service Worker -->
+  <!-- Progressive Web App Service Worker -->
   <script>
+
     if ("serviceWorker" in navigator) {
+
       window.addEventListener("load", function() {
-        navigator.serviceWorker.register("./sw.js")
+
+        navigator.serviceWorker
+          .register("./sw.js")
+
           .then(function(registration) {
+
             console.log(
               "Service Worker registered successfully:",
               registration.scope
             );
+
           })
+
           .catch(function(error) {
+
             console.error(
               "Service Worker registration failed:",
               error
             );
+
           });
+
       });
+
     }
+
   </script>
+
+  <noscript>
+    <p>
+      JavaScript is required to use the School Management System.
+      Please enable JavaScript in your browser.
+    </p>
+  </noscript>
 
 </body>
 </html>
