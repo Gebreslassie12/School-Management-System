@@ -358,11 +358,6 @@ function getLocalDate() {
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
-
-
-
-
-
 function showPage(page, button) {
   if (!pages[page]) return;
 
@@ -1810,19 +1805,35 @@ async function generateAttendanceReport(output, fromDate, toDate) {
       </tr>
     `).join("");
 
+  
+
   output.innerHTML = `
-    <h2 style="text-align:center;">ATTENDANCE REPORT</h2>
-    <p><strong>Period:</strong> ${escapeHTML(fromDate || "All dates")} to ${escapeHTML(toDate || "All dates")}</p>
+  
+const renderAttendanceReport = (title, records) => {
+  const getCount = status =>
+    records.filter(record =>
+      String(record.status || "").toLowerCase() === status.toLowerCase()
+    ).length;
+
+  const reportRows = records.map(record => `
+    <tr>
+      <td>${escapeHTML(record.date || "")}</td>
+      <td>${escapeHTML(record.name || record.studentName || record.teacherName || "")}</td>
+      <td>${escapeHTML(record.personId || record.studentId || record.teacherId || record.id || "")}</td>
+      <td>${escapeHTML(record.status || "")}</td>
+    </tr>
+  `).join("");
+
+  return `
+    <h2 style="text-align:center;">${title}</h2>
 
     <h3>Attendance Summary</h3>
     <table>
       <tbody>
-        <tr><th>Total Records</th><td>${filtered.length}</td></tr>
-        <tr><th>Present</th><td>${count("Present")}</td></tr>
-        <tr><th>Absent</th><td>${count("Absent")}</td></tr>
-        <tr><th>Late</th><td>${count("Late")}</td></tr>
-        <tr><th>Student Records</th><td>${students.length}</td></tr>
-        <tr><th>Teacher Records</th><td>${teachers.length}</td></tr>
+        <tr><th>Total Records</th><td>${records.length}</td></tr>
+        <tr><th>Present</th><td>${getCount("Present")}</td></tr>
+        <tr><th>Absent</th><td>${getCount("Absent")}</td></tr>
+        <tr><th>Late</th><td>${getCount("Late")}</td></tr>
       </tbody>
     </table>
 
@@ -1831,16 +1842,36 @@ async function generateAttendanceReport(output, fromDate, toDate) {
       <table>
         <thead>
           <tr>
-            <th>Date</th><th>Name</th><th>ID</th><th>Type</th><th>Status</th>
+            <th>Date</th>
+            <th>Name</th>
+            <th>ID</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
-          ${rows || `<tr><td colspan="5">No attendance records found.</td></tr>`}
+          ${reportRows || `<tr><td colspan="4">No attendance records found.</td></tr>`}
         </tbody>
       </table>
     </div>
   `;
+};
+
+output.innerHTML = `
+  <p><strong>Period:</strong>
+    ${escapeHTML(fromDate || "All dates")} to
+    ${escapeHTML(toDate || "All dates")}
+  </p>
+
+  ${renderAttendanceReport("STUDENT ATTENDANCE REPORT", students)}
+
+  <hr style="margin:30px 0;">
+
+  ${renderAttendanceReport("TEACHER ATTENDANCE REPORT", teachers)}
+`;
 }
+
+
+
 
 async function generateResultsReport(output, fromDate, toDate) {
   const results = await getRecords("results");
@@ -2086,11 +2117,6 @@ function printReport() {
   printWindow.document.close();
   printWindow.focus();
 }
-
-
-
-
-
 
 /* GLOBAL FUNCTIONS */
 
